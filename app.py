@@ -14,8 +14,8 @@ st.title("🚗 SmartCharging Analytics: EV Behavior Patterns")
 # 2. DATA LOADING (LOCAL PATH)
 # ===============================
 try:
+    # Success message removed as requested
     df_raw = pd.read_csv("cleaned_ev_charging_data.csv")
-    st.success("✅ Dataset 'cleaned_ev_charging_data.csv' loaded successfully!")
 except FileNotFoundError:
     st.error("❌ Dataset not found. Please ensure 'cleaned_ev_charging_data.csv' is in the same folder as this script.")
     st.stop()
@@ -63,7 +63,7 @@ for i in range(1, 11):
     km.fit(df_processed[cluster_cols])
     wcss.append(km.inertia_)
 
-fig_elbow, ax_elbow = plt.subplots(figsize=(12, 4)) # Wide layout
+fig_elbow, ax_elbow = plt.subplots(figsize=(12, 4)) 
 ax_elbow.plot(range(1, 11), wcss, marker='o', color='#1f77b4', linewidth=2)
 ax_elbow.set_title('Elbow Method showing the optimal k')
 ax_elbow.set_xlabel('Number of Clusters')
@@ -77,7 +77,7 @@ k_value = st.slider("Select k (Number of Clusters)", 2, 6, 3)
 model = KMeans(n_clusters=k_value, init='k-means++', random_state=42, n_init=10)
 df_raw['Cluster'] = model.fit_predict(df_processed[cluster_cols])
 
-fig_cluster, ax_cluster = plt.subplots(figsize=(12, 6)) # Larger plot for visibility
+fig_cluster, ax_cluster = plt.subplots(figsize=(12, 6)) 
 sns.scatterplot(data=df_raw, x='Charging Capacity (kW)', y='Usage Stats (avg users/day)', 
                 hue='Cluster', palette='Set1', s=150, alpha=0.7, ax=ax_cluster)
 ax_cluster.set_title(f"Stations Grouped into {k_value} Clusters")
@@ -86,16 +86,16 @@ st.pyplot(fig_cluster)
 # ===============================
 # 5. STAGE 8: GEOSPATIAL ANALYSIS (Fixed Zoom & Scaling)
 # ===============================
+st.divider()
 st.header("📍 Stage 8: Geographic Distribution")
 if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
-    # Use Pydeck to render a clean, single-globe map
     st.pydeck_chart(pdk.Deck(
         map_style=None, 
         initial_view_state=pdk.ViewState(
             latitude=df_raw['Latitude'].mean(),
             longitude=df_raw['Longitude'].mean(),
             zoom=2,
-            min_zoom=2,  # Prevents zooming out to see "double globes"
+            min_zoom=2, 
             pitch=0,
         ),
         layers=[
@@ -103,15 +103,15 @@ if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
                 'ScatterplotLayer',
                 data=df_raw,
                 get_position='[Longitude, Latitude]',
-                get_color='[255, 100, 0, 160]', # Orange color
-                # Use pixels instead of meters to stop giant blobs
+                get_color='[255, 100, 0, 160]', 
                 radius_min_pixels=3, 
-                radius_max_pixels=12,
+                radius_max_pixels=10,
             ),
         ],
     ))
 else:
     st.warning("Map skipped: 'Latitude' and 'Longitude' columns not found.")
+
 # ===============================
 # 6. CORRELATION & INSIGHTS
 # ===============================
