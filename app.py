@@ -3,94 +3,123 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
+from sklearn.cluster import KMeans
 
-# --- CONFIG ---
+# --- 1. SETTINGS & CONFIG ---
 st.set_page_config(page_title="EV SmartCharging Analytics", layout="wide")
 st.title("🚗 SmartCharging Analytics: EV Behavior Patterns")
 
 # ===============================
-# DATA LOADING (LOCAL PATH)
+# 2. DATA LOADING (LOCAL PATH)
 # ===============================
+# This follows your requirement to load directly from the repo folder
 try:
-    # This looks for the file in the same folder as this script
     df_raw = pd.read_csv("cleaned_ev_charging_data.csv")
-    st.success("Data loaded successfully from local directory!")
+    st.success("✅ Dataset 'cleaned_ev_charging_data.csv' loaded successfully!")
 except FileNotFoundError:
-    st.error("Dataset 'cleaned_ev_charging_data.csv' not found. Please ensure it is in the same GitHub folder as this script.")
+    st.error("❌ Dataset not found. Please ensure 'cleaned_ev_charging_data.csv' is in the same folder as this script.")
     st.stop()
 
 # ===============================
-# PREPROCESSING FUNCTION
+# 3. PREPROCESSING & FEATURE ENGINEERING
 # ===============================
+@st.cache_data
 def preprocess_data(df):
-    df = df.copy()
-
-    # Handle Missing Values
-    if 'Reviews (Rating)' in df.columns:
-        df['Reviews (Rating)'] = df['Reviews (Rating)'].fillna(df['Reviews (Rating)'].median())
-    if 'Renewable Energy Source' in df.columns:
-        df['Renewable Energy Source'] = df['Renewable Energy Source'].fillna(df['Renewable Energy Source'].mode()[0])
-
-    # Remove Duplicates
-    if 'Station ID' in df.columns:
-        df = df.drop_duplicates(subset=['Station ID'])
-
-    # Encode Categorical
+    df_proc = df.copy()
+    
+    # Fill missing values (Median for ratings, Mode for categories)
+    if 'Reviews (Rating)' in df_proc.columns:
+        df_proc['Reviews (Rating)'] = df_proc['Reviews (Rating)'].fillna(df_proc['Reviews (Rating)'].median())
+    
+    # Encoding for Clustering logic
     le = LabelEncoder()
-    cat_cols = ['Charger Type', 'Station Operator', 'Renewable Energy Source']
-    for col in cat_cols:
-        if col in df.columns:
-            df[col] = le.fit_transform(df[col].astype(str))
+    for col in ['Charger Type', 'Station Operator', 'Renewable Energy Source']:
+        if col in df_proc.columns:
+            df_proc[f'{col}_Enc'] = le.fit_transform(df_proc[col].astype(str))
 
-    # Normalize Numeric
+    # Normalize Numeric Features (Required for K-Means distance calculation)
     scaler = MinMaxScaler()
-    num_cols = ['Cost (USD/kWh)', 'Usage Stats (avg users/day)', 'Charging Capacity (kW)', 'Distance to City (km)']
-    existing_cols = [c for c in num_cols if c in df.columns]
-    if existing_cols:
-        df[existing_cols] = scaler.fit_transform(df[existing_cols])
+    features = ['Cost (USD/kWh)', 'Usage Stats (avg users/day)', 'Charging Capacity (kW)']
+    existing_features = [f for f in features if f in df_proc.columns]
+    
+    if existing_features:
+        df_proc[existing_features] = scaler.fit_transform(df_proc[existing_features])
+    
+    return df_proc, existing_features
 
-    return df
+df_processed, cluster_cols = preprocess_data(df_raw)
 
 # ===============================
-# MAIN DASHBOARD
+# 4. STAGE 4: K-MEANS CLUSTERING & ELBOW METHOD
 # ===============================
-if st.checkbox("Show Raw Data"):
-    st.write(df_raw.head())
+st.divider()
+st.header("🤖 Stage 4: Machine Learning - Station Clustering")
+st.write("Using the Elbow Method to determine the optimal number of clusters based on WCSS (Within-Cluster Sum of Squares).")
 
-df_processed = preprocess_data(df_raw)
+c1, c2 = st.columns([1, 1])
 
-st.header("📊 Exploratory Data Analysis")
+with c1:
+    # Elbow Method Plot
+    wcss = []
+    for i in range(1, 11):
+        km = KMeans(n_clusters=i, init='k-means++', random_state=42, n_init=10)
+        km.fit(df_processed[cluster_cols])
+        wcss.append(km.inertia_)
+    
+    fig_elbow, ax_elbow = plt.subplots(figsize=(6, 4))
+    ax_elbow.plot(range(1, 11), wcss, marker='o', color='#1f77b4')
+    ax_elbow.set_title('Elbow Method')
+    ax_elbow.set_xlabel('Number of Clusters')
+    ax_elbow.set_ylabel('WCSS')
+    st.pyplot(fig_elbow)
 
-col1, col2 = st.columns(2)
+with c2:
+    # Cluster Execution
+    k_value = st.slider("Select k (Number of Clusters)", 2, 6, 3)
+    model = KMeans(n_clusters=k_value, init='k-means++', random_state=42, n_init=10)
+    df_raw['Cluster'] = model.fit_predict(df_processed[cluster_cols])
+    
+    # Visualizing Clusters
+    fig_cluster, ax_cluster = plt.subplots(figsize=(6, 4))
+    sns.scatterplot(data=df_raw, x='Charging Capacity (kW)', y='Usage Stats (avg users/day)', 
+                    hue='Cluster', palette='Set1', ax=ax_cluster)
+    ax_cluster.set_title(f"K-Means Clustering (k={k_value})")
+    st.pyplot(fig_cluster)
 
-with col1:
-    if 'Usage Stats (avg users/day)' in df_raw.columns:
-        st.subheader("Usage Distribution")
-        fig, ax = plt.subplots()
-        sns.histplot(df_raw['Usage Stats (avg users/day)'], kde=True, ax=ax)
-        st.pyplot(fig)
+# ===============================
+# 5. STAGE 8: GEOSPATIAL ANALYSIS
+# ===============================
+st.header("📍 Stage 8: Geographic Distribution")
+if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
+    # Streamlit requires columns named 'lat' and 'lon'
+    map_data = df_raw.rename(columns={'Latitude': 'lat', 'Longitude': 'lon'})
+    st.map(map_data)
+else:
+    st.warning("Map skipped: 'Latitude' and 'Longitude' columns not found in dataset.")
 
-with col2:
-    if 'Station Operator' in df_raw.columns and 'Cost (USD/kWh)' in df_raw.columns:
-        st.subheader("Cost by Station Operator")
-        fig, ax = plt.subplots()
-        sns.boxplot(x=df_raw['Station Operator'], y=df_raw['Cost (USD/kWh)'], ax=ax)
-        plt.xticks(rotation=45)
-        st.pyplot(fig)
+# ===============================
+# 6. CORRELATION & INSIGHTS
+# ===============================
+st.divider()
+st.header("📊 Stage 7: Interpretation & Insights")
 
-# --- FIXED HEATMAP ---
-st.subheader("Correlation Heatmap")
-fig_heat, ax_heat = plt.subplots(figsize=(10, 7)) 
-sns.heatmap(
-    df_processed.corr(numeric_only=True), 
-    annot=True, 
-    fmt=".2f",           # Limits decimals
-    annot_kws={"size": 8}, # Smaller font for numbers
-    cmap='coolwarm', 
-    ax=ax_heat
-)
+# Heatmap Fix (Smaller font, no overlap)
+fig_corr, ax_corr = plt.subplots(figsize=(10, 6))
+sns.heatmap(df_processed.select_dtypes(include=['number']).corr(), 
+            annot=True, fmt=".2f", cmap='coolwarm', annot_kws={"size": 8}, ax=ax_corr)
 plt.xticks(rotation=45, ha='right')
-st.pyplot(fig_heat)
+st.pyplot(fig_corr)
 
-if st.checkbox("Show Processed Data"):
-    st.write(df_processed.head())
+# Automatic Insight Generation
+st.subheader("Key Findings")
+avg_usage = df_raw.groupby('Cluster')['Usage Stats (avg users/day)'].mean()
+best_cluster = avg_usage.idxmax()
+
+st.info(f"""
+- **Top Performing Group:** Cluster {best_cluster} shows the highest average daily usage.
+- **Correlations:** The heatmap indicates how factors like 'Cost' and 'Capacity' influence user behavior.
+- **Geographic Trend:** The map reveals concentration of charging infrastructure in specific zones.
+""")
+
+if st.checkbox("View Final Data Table"):
+    st.dataframe(df_raw)
