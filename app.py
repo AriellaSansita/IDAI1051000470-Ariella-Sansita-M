@@ -1,77 +1,107 @@
 import streamlit as st
 import pandas as pd
-import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 
-# --- CONFIGURATION ---
-# Replace 'YourUsername' and 'YourRepo' with your actual GitHub details
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/YourUsername/YourRepo/main/detailed_ev_charging_stations.csv"
-
 st.set_page_config(page_title="EV SmartCharging Analytics", layout="wide")
 st.title("🚗 SmartCharging Analytics: EV Behavior Patterns")
 
+# 🔗 PUT YOUR REAL RAW LINK HERE
+GITHUB_RAW_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/YOUR_FILE.csv"
+
+# Optional upload backup
+uploaded_file = st.file_uploader("Upload CSV (optional override)", type=["csv"])
+
 @st.cache_data
-def load_and_preprocess_data(url):
-    # Load the dataset from GitHub
-    df = pd.read_csv(url)
-    
-    # --- STAGE 2: DATA CLEANING & PREPROCESSING --- 
-    # 1. Handle missing values
+def load_data():
+    if uploaded_file is not None:
+        return pd.read_csv(uploaded_file)
+    else:
+        return pd.read_csv(GITHUB_RAW_URL)
+
+def preprocess_data(df):
+    df = df.copy()
+
+    # Missing values
     if 'Reviews (Rating)' in df.columns:
-        df['Reviews (Rating)'] = df['Reviews (Rating)'].fillna(df['Reviews (Rating)'].median()) [cite: 2]
-    
+        df['Reviews (Rating)'] = df['Reviews (Rating)'].fillna(df['Reviews (Rating)'].median())
+
     if 'Renewable Energy Source' in df.columns:
-        df['Renewable Energy Source'] = df['Renewable Energy Source'].fillna(df['Renewable Energy Source'].mode()[0]) [cite: 2]
+        df['Renewable Energy Source'] = df['Renewable Energy Source'].fillna(
+            df['Renewable Energy Source'].mode()[0]
+        )
 
-    # 2. Remove duplicates 
+    # Remove duplicates
     if 'Station ID' in df.columns:
-        df = df.drop_duplicates(subset=['Station ID'], keep='first')
+        df = df.drop_duplicates(subset=['Station ID'])
 
-    # 3. Normalize continuous variables 
-    scaler = MinMaxScaler()
-    cont_vars = ['Cost (USD/kWh)', 'Usage Stats (avg users/day)', 'Charging Capacity (kW)', 'Distance to City (km)']
-    existing_cont = [v for v in cont_vars if v in df.columns]
-    df[existing_cont] = scaler.fit_transform(df[existing_cont])
-
-    # 4. Encode categorical features 
+    # Encode categorical
     le = LabelEncoder()
-    cat_vars = ['Charger Type', 'Station Operator', 'Renewable Energy Source']
-    for col in cat_vars:
+    cat_cols = ['Charger Type', 'Station Operator', 'Renewable Energy Source']
+    for col in cat_cols:
         if col in df.columns:
             df[col] = le.fit_transform(df[col].astype(str))
-            
+
+    # Normalize numeric
+    scaler = MinMaxScaler()
+    num_cols = [
+        'Cost (USD/kWh)',
+        'Usage Stats (avg users/day)',
+        'Charging Capacity (kW)',
+        'Distance to City (km)'
+    ]
+
+    existing_cols = [c for c in num_cols if c in df.columns]
+    if existing_cols:
+        df[existing_cols] = scaler.fit_transform(df[existing_cols])
+
     return df
 
-# Main execution
+# --- MAIN ---
 try:
-    df = load_and_preprocess_data(GITHUB_RAW_URL)
-    st.success("Dataset loaded and preprocessed directly from GitHub!")
+    df_raw = load_data()
+    st.success("Data loaded successfully from GitHub (or upload)")
 
-    # --- STAGE 3: EXPLORATORY DATA ANALYSIS (EDA) --- 
+    if st.checkbox("Show Raw Data"):
+        st.write(df_raw.head())
+
+    df = preprocess_data(df_raw)
+
     st.header("📊 Exploratory Data Analysis")
-    
+
     col1, col2 = st.columns(2)
 
+    # Graph 1
     with col1:
-        st.subheader("Distribution of Station Usage")
-        fig1, ax1 = plt.subplots()
-        sns.histplot(df['Usage Stats (avg users/day)'], kde=True, ax=ax1, color='teal')
-        st.pyplot(fig1) [cite: 2]
+        if 'Usage Stats (avg users/day)' in df_raw.columns:
+            st.subheader("Usage Distribution")
+            fig, ax = plt.subplots()
+            sns.histplot(df_raw['Usage Stats (avg users/day)'], kde=True, ax=ax)
+            st.pyplot(fig)
 
+    # Graph 2
     with col2:
-        if 'Station Operator' in df.columns:
-            st.subheader("Cost Distribution by Operator")
-            fig2, ax2 = plt.subplots()
-            sns.boxplot(x='Station Operator', y='Cost (USD/kWh)', data=df, ax=ax2)
+        if 'Station Operator' in df_raw.columns and 'Cost (USD/kWh)' in df_raw.columns:
+            st.subheader("Cost by Station Operator")
+            fig, ax = plt.subplots()
+            sns.boxplot(
+                x=df_raw['Station Operator'],
+                y=df_raw['Cost (USD/kWh)'],
+                ax=ax
+            )
             plt.xticks(rotation=45)
-            st.pyplot(fig2) [cite: 2]
+            st.pyplot(fig)
 
-    # Show raw data preview 
-    if st.checkbox("Show Cleaned & Normalized Data Preview"):
-        st.write(df.head(10))
+    # Heatmap
+    st.subheader("Correlation Heatmap")
+    fig, ax = plt.subplots()
+    sns.heatmap(df.corr(numeric_only=True), annot=True, cmap='coolwarm', ax=ax)
+    st.pyplot(fig)
+
+    if st.checkbox("Show Processed Data"):
+        st.write(df.head())
 
 except Exception as e:
-    st.error(f"Error: Could not retrieve data from GitHub. {e}")
-    st.info("Check if your GitHub link is the 'Raw' version and the filename is correct.")
+    st.error(f"Error loading data: {e}")
+    st.info("Make sure your GitHub link is RAW and public.")
