@@ -86,32 +86,14 @@ with c2:
     ax_cluster.set_title(f"K-Means Clustering (k={k_value})")
     st.pyplot(fig_cluster)
 
-import pydeck as pdk
-
 # ===============================
-# 5. STAGE 8: GEOSPATIAL ANALYSIS (Attribution Removed)
+# 5. STAGE 8: GEOSPATIAL ANALYSIS
 # ===============================
 st.header("📍 Stage 8: Geographic Distribution")
 if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
-    # We use pydeck directly to set a style that minimizes UI elements
-    st.pydeck_chart(pdk.Deck(
-        map_style=None,  # Setting this to None often removes standard overlays
-        initial_view_state=pdk.ViewState(
-            latitude=df_raw['Latitude'].mean(),
-            longitude=df_raw['Longitude'].mean(),
-            zoom=1,
-            pitch=0,
-        ),
-        layers=[
-            pdk.Layer(
-                'ScatterplotLayer',
-                data=df_raw,
-                get_position='[Longitude, Latitude]',
-                get_color='[200, 30, 0, 160]',
-                get_radius=200000,
-            ),
-        ],
-    ))
+    # Streamlit requires columns named 'lat' and 'lon'
+    map_data = df_raw.rename(columns={'Latitude': 'lat', 'Longitude': 'lon'})
+    st.map(map_data)
 else:
     st.warning("Map skipped: 'Latitude' and 'Longitude' columns not found in dataset.")
 
