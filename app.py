@@ -84,17 +84,18 @@ ax_cluster.set_title(f"Stations Grouped into {k_value} Clusters")
 st.pyplot(fig_cluster)
 
 # ===============================
-# 5. STAGE 8: GEOSPATIAL ANALYSIS (No Attribution)
+# 5. STAGE 8: GEOSPATIAL ANALYSIS (Fixed Zoom & Scaling)
 # ===============================
-st.divider()
 st.header("📍 Stage 8: Geographic Distribution")
 if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
+    # Use Pydeck to render a clean, single-globe map
     st.pydeck_chart(pdk.Deck(
         map_style=None, 
         initial_view_state=pdk.ViewState(
             latitude=df_raw['Latitude'].mean(),
             longitude=df_raw['Longitude'].mean(),
-            zoom=1.5,
+            zoom=2,
+            min_zoom=2,  # Prevents zooming out to see "double globes"
             pitch=0,
         ),
         layers=[
@@ -102,14 +103,15 @@ if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
                 'ScatterplotLayer',
                 data=df_raw,
                 get_position='[Longitude, Latitude]',
-                get_color='[255, 100, 0, 160]',
-                get_radius=180000,
+                get_color='[255, 100, 0, 160]', # Orange color
+                # Use pixels instead of meters to stop giant blobs
+                radius_min_pixels=3, 
+                radius_max_pixels=12,
             ),
         ],
     ))
 else:
     st.warning("Map skipped: 'Latitude' and 'Longitude' columns not found.")
-
 # ===============================
 # 6. CORRELATION & INSIGHTS
 # ===============================
