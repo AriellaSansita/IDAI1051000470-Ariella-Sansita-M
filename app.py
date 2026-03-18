@@ -8,7 +8,7 @@ st.set_page_config(page_title="EV SmartCharging Analytics", layout="wide")
 st.title("🚗 SmartCharging Analytics: EV Behavior Patterns")
 
 # 🔗 PUT YOUR REAL RAW LINK HERE
-GITHUB_RAW_URL = "https://raw.githubusercontent.com/YOUR_USERNAME/YOUR_REPO/main/YOUR_FILE.csv"
+GITHUB_RAW_URL = "https://github.com/AriellaSansita/SmartCharging-Analytics/blob/main/detailed_ev_charging_stations.csv"
 
 # Optional upload backup
 uploaded_file = st.file_uploader("Upload CSV (optional override)", type=["csv"])
