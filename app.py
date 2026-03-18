@@ -14,7 +14,6 @@ st.title("🚗 SmartCharging Analytics: EV Behavior Patterns")
 # 2. DATA LOADING (LOCAL PATH)
 # ===============================
 try:
-    # Success message removed as requested
     df_raw = pd.read_csv("cleaned_ev_charging_data.csv")
 except FileNotFoundError:
     st.error("❌ Dataset not found. Please ensure 'cleaned_ev_charging_data.csv' is in the same folder as this script.")
@@ -31,13 +30,13 @@ def preprocess_data(df):
     if 'Reviews (Rating)' in df_proc.columns:
         df_proc['Reviews (Rating)'] = df_proc['Reviews (Rating)'].fillna(df_proc['Reviews (Rating)'].median())
     
-    # Encoding
+    # Encoding categorical columns
     le = LabelEncoder()
     for col in ['Charger Type', 'Station Operator', 'Renewable Energy Source']:
         if col in df_proc.columns:
             df_proc[f'{col}_Enc'] = le.fit_transform(df_proc[col].astype(str))
 
-    # Normalize Numeric Features for K-Means
+    # Normalize Numeric Features for K-Means math
     scaler = MinMaxScaler()
     features = ['Cost (USD/kWh)', 'Usage Stats (avg users/day)', 'Charging Capacity (kW)']
     existing_features = [f for f in features if f in df_proc.columns]
@@ -78,6 +77,7 @@ model = KMeans(n_clusters=k_value, init='k-means++', random_state=42, n_init=10)
 df_raw['Cluster'] = model.fit_predict(df_processed[cluster_cols])
 
 fig_cluster, ax_cluster = plt.subplots(figsize=(12, 6)) 
+# Using df_raw here ensures the axes show real numbers, not 0-1 decimals
 sns.scatterplot(data=df_raw, x='Charging Capacity (kW)', y='Usage Stats (avg users/day)', 
                 hue='Cluster', palette='Set1', s=150, alpha=0.7, ax=ax_cluster)
 ax_cluster.set_title(f"Stations Grouped into {k_value} Clusters")
@@ -119,8 +119,9 @@ st.divider()
 st.header("📊 Stage 7: Interpretation & Insights")
 
 fig_corr, ax_corr = plt.subplots(figsize=(10, 6))
-sns.heatmap(df_processed.select_dtypes(include=['number']).corr(), 
-            annot=True, fmt=".2f", cmap='coolwarm', annot_kws={"size": 8}, ax=ax_corr)
+# Filter for numeric only to avoid errors
+corr_data = df_processed.select_dtypes(include=['number'])
+sns.heatmap(corr_data.corr(), annot=True, fmt=".2f", cmap='coolwarm', annot_kws={"size": 8}, ax=ax_corr)
 plt.xticks(rotation=45, ha='right')
 st.pyplot(fig_corr)
 
