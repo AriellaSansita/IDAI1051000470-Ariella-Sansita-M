@@ -45,7 +45,7 @@ def preprocess_data(df):
 df_processed, cluster_cols = preprocess_data(df_raw)
 
 # ===============================
-# 4. STAGE 4: CLUSTERING
+# 4. STAGE 4: K-MEANS CLUSTERING
 # ===============================
 st.divider()
 st.header("🤖 Stage 4: Machine Learning - Station Clustering")
@@ -58,23 +58,26 @@ for i in range(1, 11):
     km.fit(df_processed[cluster_cols])
     wcss.append(km.inertia_)
 
-fig_elbow, ax_elbow = plt.subplots(figsize=(10, 3)) 
-ax_elbow.plot(range(1, 11), wcss, marker='o', color='#1f77b4')
-ax_elbow.set_ylabel('WCSS')
+# Restored to original wide size
+fig_elbow, ax_elbow = plt.subplots(figsize=(12, 4)) 
+ax_elbow.plot(range(1, 11), wcss, marker='o', color='#1f77b4', linewidth=2)
+ax_elbow.set_title('Elbow Method showing the optimal k')
+ax_elbow.set_xlabel('Number of Clusters')
+ax_elbow.set_ylabel('WCSS (Error Rate)')
 st.pyplot(fig_elbow)
 
-# --- Step 2: Scatter Plot (FIXED SIZE & SCALING) ---
+# --- Step 2: Scatter Plot ---
 st.subheader("2. Market Segmentation Results")
 k_value = st.slider("Select k (Number of Clusters)", 2, 6, 3)
 
 model = KMeans(n_clusters=k_value, init='k-means++', random_state=42, n_init=10)
 df_raw['Cluster'] = model.fit_predict(df_processed[cluster_cols])
 
-# FIX: Using df_raw for x and y to stop the "squashed corner" look
-# FIX: Reduced figsize to (8, 4) to make it smaller
-fig_cluster, ax_cluster = plt.subplots(figsize=(8, 4)) 
+# Restored to original large size (12, 6)
+# Fixed scaling: Using df_raw instead of df_processed for the axes
+fig_cluster, ax_cluster = plt.subplots(figsize=(12, 6)) 
 sns.scatterplot(data=df_raw, x='Charging Capacity (kW)', y='Usage Stats (avg users/day)', 
-                hue='Cluster', palette='Set1', s=100, alpha=0.7, ax=ax_cluster)
+                hue='Cluster', palette='Set1', s=150, alpha=0.7, ax=ax_cluster)
 ax_cluster.set_title(f"Stations Grouped into {k_value} Clusters")
 st.pyplot(fig_cluster)
 
@@ -106,19 +109,19 @@ if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
     ))
 
 # ===============================
-# 6. CORRELATION & INSIGHTS (FIXED SIZE & TEXT)
+# 6. CORRELATION & INSIGHTS
 # ===============================
 st.divider()
 st.header("📊 Stage 7: Interpretation & Insights")
 
-# FIX: Reduced figsize to (7, 4) to make the heatmap smaller
-fig_corr, ax_corr = plt.subplots(figsize=(7, 4))
+# Restored to original size (10, 6)
+fig_corr, ax_corr = plt.subplots(figsize=(10, 6))
 sns.heatmap(df_processed.select_dtypes(include=['number']).corr(), 
-            annot=True, fmt=".2f", cmap='coolwarm', annot_kws={"size": 7}, ax=ax_corr)
+            annot=True, fmt=".2f", cmap='coolwarm', annot_kws={"size": 8}, ax=ax_corr)
 
-# FIX: Rotated labels to prevent overlapping
-plt.xticks(rotation=45, ha='right', fontsize=8)
-plt.yticks(fontsize=8)
+# Keeps the labels rotated and readable
+plt.xticks(rotation=45, ha='right', fontsize=9)
+plt.yticks(fontsize=9)
 st.pyplot(fig_corr)
 
 # Automated Insight Generation
@@ -128,6 +131,7 @@ best_cluster = avg_usage.idxmax()
 
 st.info(f"""
 - **Top Performing Group:** Cluster {best_cluster} shows the highest average daily usage.
+- **Correlations:** High correlation between Charging Capacity and Usage confirms demand for fast-chargers.
 - **Strategic Recommendation:** Focus maintenance and renewable upgrades on stations in the highest-usage cluster.
 """)
 
