@@ -49,43 +49,28 @@ def preprocess_data(df):
 
 df_processed, cluster_cols = preprocess_data(df_raw)
 
-# ===============================
-# 4. STAGE 4: K-MEANS CLUSTERING & ELBOW METHOD
-# ===============================
+# --- STAGE 4: CLUSTERING (Stacked Layout) ---
 st.divider()
 st.header("🤖 Stage 4: Machine Learning - Station Clustering")
-st.write("Using the Elbow Method to determine the optimal number of clusters based on WCSS (Within-Cluster Sum of Squares).")
 
-c1, c2 = st.columns([1, 1])
+# 1. Elbow Method (Full Width)
+st.subheader("1. Finding Optimal K (Elbow Method)")
+fig_elbow, ax_elbow = plt.subplots(figsize=(10, 4)) # Wide and short
+ax_elbow.plot(range(1, 11), wcss, marker='o', color='#1f77b4')
+ax_elbow.set_xlabel('Number of Clusters')
+ax_elbow.set_ylabel('WCSS')
+st.pyplot(fig_elbow)
 
-with c1:
-    # Elbow Method Plot
-    wcss = []
-    for i in range(1, 11):
-        km = KMeans(n_clusters=i, init='k-means++', random_state=42, n_init=10)
-        km.fit(df_processed[cluster_cols])
-        wcss.append(km.inertia_)
-    
-    fig_elbow, ax_elbow = plt.subplots(figsize=(6, 4))
-    ax_elbow.plot(range(1, 11), wcss, marker='o', color='#1f77b4')
-    ax_elbow.set_title('Elbow Method')
-    ax_elbow.set_xlabel('Number of Clusters')
-    ax_elbow.set_ylabel('WCSS')
-    st.pyplot(fig_elbow)
+# 2. Controls and Cluster Plot (Full Width)
+st.subheader("2. Cluster Visualization")
+k_value = st.slider("Select k (Number of Clusters)", 2, 6, 3)
 
-with c2:
-    # Cluster Execution
-    k_value = st.slider("Select k (Number of Clusters)", 2, 6, 3)
-    model = KMeans(n_clusters=k_value, init='k-means++', random_state=42, n_init=10)
-    df_raw['Cluster'] = model.fit_predict(df_processed[cluster_cols])
-    
-    # Visualizing Clusters
-    fig_cluster, ax_cluster = plt.subplots(figsize=(6, 4))
-    sns.scatterplot(data=df_raw, x='Charging Capacity (kW)', y='Usage Stats (avg users/day)', 
-                    hue='Cluster', palette='Set1', ax=ax_cluster)
-    ax_cluster.set_title(f"K-Means Clustering (k={k_value})")
-    st.pyplot(fig_cluster)
+# ... (KMeans model code here) ...
 
+fig_cluster, ax_cluster = plt.subplots(figsize=(10, 5)) # Matching width
+sns.scatterplot(data=df_raw, x='Charging Capacity (kW)', y='Usage Stats (avg users/day)', 
+                hue='Cluster', palette='Set1', ax=ax_cluster)
+st.pyplot(fig_cluster)
 # ===============================
 # 5. STAGE 8: GEOSPATIAL ANALYSIS
 # ===============================
