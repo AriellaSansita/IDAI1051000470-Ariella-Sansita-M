@@ -142,23 +142,49 @@ if st.checkbox("Show Anomaly Data"):
     st.dataframe(usage_outliers.head())
 
 # ===============================
-# 7. STAGE 6: ASSOCIATION RULE MINING
+# 7. STAGE 6: ASSOCIATION RULE MINING (FIXED)
 # ===============================
 st.divider()
 st.header("🔗 Stage 6: Association Rule Mining")
 
-# Discretizing data for Apriori (Binary Encoding)
-df_rules = pd.DataFrame()
-df_rules['High_Usage'] = df_raw['Usage Stats (avg users/day)'] > df_raw['Usage Stats (avg users/day)'].median()
-df_rules['Fast_Charger'] = df_raw['Charging Capacity (kW)'] > df_raw['Charging Capacity (kW)'].median()
-df_rules['Renewable'] = df_raw['Renewable Energy Source'] == 1
-df_rules['High_Cost'] = df_raw['Cost (USD/kWh)'] > df_raw['Cost (USD/kWh)'].median()
+try:
+    # We must ensure the data is strictly True/False for the Apriori algorithm
+    df_rules = pd.DataFrame()
+    
+    # 1. High Usage (True if above average)
+    df_rules['High_Usage'] = (df_raw['Usage Stats (avg users/day)'] > df_raw['Usage Stats (avg users/day)'].median()).astype(bool)
+    
+    # 2. Fast Charger (True if above average capacity)
+    df_rules['Fast_Charger'] = (df_raw['Charging Capacity (kW)'] > df_raw['Charging Capacity (kW)'].median()).astype(bool)
+    
+    # 3. Renewable (True if the value is 1 or True)
+    if 'Renewable Energy Source' in df_raw.columns:
+        df_rules['Renewable'] = df_raw['Renewable Energy Source'].astype(bool)
+    
+    # 4. High Cost (True if above average cost)
+    df_rules['High_Cost'] = (df_raw['Cost (USD/kWh)'] > df_raw['Cost (USD/kWh)'].median()).astype(bool)
 
-frequent_itemsets = apriori(df_rules, min_support=0.1, use_colnames=True)
-rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1)
+    # Run Apriori
+    frequent_itemsets = apriori(df_rules, min_support=0.05, use_colnames=True)
+    
+    if not frequent_itemsets.empty:
+        rules = association_rules(frequent_itemsets, metric="lift", min_threshold=1)
+        
+        if not rules.empty:
+            st.write("Discovered patterns in station behavior:")
+            # Cleaning up the look of the table for the dashboard
+            display_rules = rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].copy()
+            display_rules['antecedents'] = display_rules['antecedents'].apply(lambda x: list(x)[0])
+            display_rules['consequents'] = display_rules['consequents'].apply(lambda x: list(x)[0])
+            st.dataframe(display_rules.head(10), use_container_width=True)
+        else:
+            st.warning("No strong associations found with the current threshold.")
+    else:
+        st.warning("No frequent itemsets found. Try lowering the min_support.")
 
-st.write("Discovered patterns in station behavior:")
-st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].head(10))
+except Exception as e:
+    st.error(f"Error in Association Rules: {e}")
+    st.info("This usually happens if the data columns are not formatted as True/False.")
 
 # ===============================
 # 8. STAGE 8: GEOSPATIAL ANALYSIS
