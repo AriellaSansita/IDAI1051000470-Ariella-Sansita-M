@@ -150,25 +150,42 @@ if len(usage_outliers) + len(cost_outliers) == 0:
     st.success("✅ No statistical anomalies detected.")
 
 # ===============================
-# 7. STAGE 6: ASSOCIATION RULE MINING
+# 6. STAGE 6: ASSOCIATION RULE MINING (CALIBRATED)
 # ===============================
 st.divider()
 st.header("🔗 Stage 6: Association Rule Mining")
-rules = None # Initialize for later reference
 try:
     df_rules = pd.DataFrame()
-    df_rules['High_Usage'] = df_raw['Usage Stats (avg users/day)'] > df_raw['Usage Stats (avg users/day)'].quantile(0.75)
-    df_rules['Near_City'] = df_raw['Distance to City (km)'] < df_raw['Distance to City (km)'].median()
+    # Using specific quantiles makes the rules more "real"
+    df_rules['HighUsage'] = df_raw['Usage Stats (avg users/day)'] > df_raw['Usage Stats (avg users/day)'].quantile(0.5)
+    df_rules['FastCharger'] = df_raw['Charging Capacity (kW)'] > df_raw['Charging Capacity (kW)'].quantile(0.5)
+    df_rules['Renewable'] = df_raw['Renewable Energy Source'].astype(bool)
+    df_rules['PremiumPrice'] = df_raw['Cost (USD/kWh)'] > df_raw['Cost (USD/kWh)'].quantile(0.5)
+    
     df_rules = df_rules.astype(bool)
-    freq = apriori(df_rules, min_support=0.05, use_colnames=True)
+    
+    # LOWERED SUPPORT: From 0.1 to 0.02 (2%)
+    freq = apriori(df_rules, min_support=0.02, use_colnames=True)
+    
     if not freq.empty:
+        # LOWERED LIFT: To 1.0 (Any positive correlation)
         rules = association_rules(freq, metric="lift", min_threshold=1.0)
+
         if not rules.empty:
             rules['antecedents'] = rules['antecedents'].apply(lambda x: ', '.join(list(x)))
             rules['consequents'] = rules['consequents'].apply(lambda x: ', '.join(list(x)))
-            st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].head(10))
+            
+            # Sort by Lift to show the most interesting rules first
+            rules = rules.sort_values('lift', ascending=False)
+            
+            st.write("### Top Patterns Discovered")
+            st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].head(10), use_container_width=True)
+        else:
+            st.warning("Patterns exist, but they aren't strong enough. Try lowering the threshold further.")
+    else:
+        st.warning("No frequent patterns found at this support level.")
 except Exception as e:
-    st.error(f"Rule Error: {e}")
+    st.error(f"Analysis error: {e}")
 
 # ===============================
 # 8. GEOSPATIAL & INSIGHTS
