@@ -134,15 +134,23 @@ usage_outliers = detect_outliers(df_raw, 'Usage Stats (avg users/day)')
 cost_outliers = detect_outliers(df_raw, 'Cost (USD/kWh)')
 
 c1, c2 = st.columns(2)
-c1.metric("Usage Outliers Detected", len(usage_outliers))
-c2.metric("Cost Outliers Detected", len(cost_outliers))
+c1.metric("Usage Outliers", len(usage_outliers))
+c2.metric("Cost Outliers", len(cost_outliers))
 
-if st.checkbox("Show Anomaly Data"):
-    st.write("Top Usage Anomalies:")
-    st.dataframe(usage_outliers.head())
-
-if usage_outliers== 0:
-    print("There are no anomalies")
+# --- FIXED LOGIC START ---
+if len(usage_outliers) == 0 and len(cost_outliers) == 0:
+    # This shows a nice blue box on your website
+    st.info("✅ No anomalies detected. All station data falls within the normal statistical range.")
+else:
+    if st.checkbox("Show Anomaly Data"):
+        if len(usage_outliers) > 0:
+            st.write("### Usage Anomalies")
+            st.dataframe(usage_outliers)
+        
+        if len(cost_outliers) > 0:
+            st.write("### Cost Anomalies")
+            st.dataframe(cost_outliers)
+# --- FIXED LOGIC END ---
 
 # ===============================
 # 7. STAGE 6: ASSOCIATION RULE MINING (FIXED)
