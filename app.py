@@ -7,13 +7,14 @@ import numpy as np
 from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from sklearn.cluster import KMeans
 from mlxtend.frequent_patterns import apriori, association_rules
-
-# --- 1. SETTINGS & CONFIG ---
+# ===============================
+# SETTINGS & CONFIG
+# ===============================
 st.set_page_config(page_title="EV SmartCharging Analytics", layout="wide")
 st.title("🚗 SmartCharging Analytics: EV Behavior Patterns")
 
 # ===============================
-# 2. DATA LOADING
+# DATA LOADING
 # ===============================
 try:
     df_raw = pd.read_csv("cleaned_ev_charging_data.csv")
@@ -22,7 +23,7 @@ except FileNotFoundError:
     st.stop()
 
 # ===============================
-# 3. PREPROCESSING & FEATURE ENGINEERING
+# PREPROCESSING & FEATURE ENGINEERING
 # ===============================
 @st.cache_data
 def preprocess_data(df):
@@ -59,7 +60,7 @@ def preprocess_data(df):
 df_processed, cluster_cols = preprocess_data(df_raw)
 
 # ===============================
-# 4. STAGE 1: EXPLORATORY DATA ANALYSIS (EDA)
+# EXPLORATORY DATA ANALYSIS (EDA)
 # ===============================
 st.divider()
 st.header("📊 Stage 1: Exploratory Data Analysis (EDA)")
@@ -88,7 +89,7 @@ if 'Installation Year' in df_raw.columns:
     st.pyplot(fig_line)
 
 # ===============================
-# 5. STAGE 4: K-MEANS CLUSTERING (IMPROVED)
+# K-MEANS CLUSTERING
 # ===============================
 st.divider()
 st.header("🤖 Stage 4: Machine Learning - Station Clustering")
@@ -116,7 +117,7 @@ sns.scatterplot(data=df_raw, x='Charging Capacity (kW)', y='Usage Stats (avg use
 st.pyplot(fig_cluster)
 
 # ===============================
-# 6. STAGE 5: ANOMALY DETECTION (IQR)
+# ANOMALY DETECTION (IQR)
 # ===============================
 st.divider()
 st.header("🔍 Stage 5: Anomaly Detection")
@@ -137,7 +138,6 @@ c1, c2 = st.columns(2)
 c1.metric("Usage Outliers", len(usage_outliers))
 c2.metric("Cost Outliers", len(cost_outliers))
 
-# --- FIXED LOGIC START ---
 if len(usage_outliers) == 0 and len(cost_outliers) == 0:
     # This shows a nice blue box on your website
     st.info("✅ No anomalies detected. All station data falls within the normal statistical range.")
@@ -150,10 +150,9 @@ else:
         if len(cost_outliers) > 0:
             st.write("### Cost Anomalies")
             st.dataframe(cost_outliers)
-# --- FIXED LOGIC END ---
 
 # ===============================
-# 7. STAGE 6: ASSOCIATION RULE MINING (FIXED)
+# ASSOCIATION RULE MINING
 # ===============================
 st.divider()
 st.header("🔗 Stage 6: Association Rule Mining")
@@ -197,7 +196,7 @@ except Exception as e:
     st.error(f"Table Error: {e}")
 
 # ===============================
-# 8. STAGE 8: GEOSPATIAL ANALYSIS
+# GEOSPATIAL ANALYSIS
 # ===============================
 st.divider()
 st.header("📍 Stage 8: Geographic Distribution")
@@ -217,7 +216,7 @@ if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
     ))
 
 # ===============================
-# 9. INTERPRETATION & INSIGHTS
+# INTERPRETATION & INSIGHTS
 # ===============================
 st.divider()
 st.header("📊 Stage 7: Interpretation & Insights")
