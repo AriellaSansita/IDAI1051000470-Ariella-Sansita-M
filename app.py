@@ -62,43 +62,52 @@ df_processed, cluster_cols = preprocess_for_ml(df_raw)
 # 4. STAGE 1: EXPLORATORY DATA ANALYSIS (EDA)
 # ===============================
 st.header("📊 Stage 1: Exploratory Data Analysis")
-tabs = st.tabs(["Distributions", "Advanced Relationships", "Temporal Trends"])
 
-with tabs[0]:
-    col1, col2 = st.columns(2)
-    with col1:
-        st.subheader("Usage Statistics Distribution")
-        fig_h, ax_h = plt.subplots(figsize=(8, 5))
-        sns.histplot(df_raw['Usage Stats (avg users/day)'], bins=20, kde=True, color='teal', ax=ax_h)
-        st.pyplot(fig_h)
-    with col2:
-        st.subheader("Cost vs Station Operator")
-        fig_b, ax_b = plt.subplots(figsize=(8, 5))
-        sns.boxplot(data=df_raw, x='Station Operator', y='Cost (USD/kWh)', palette='Set2', ax=ax_b)
-        plt.xticks(rotation=45)
-        st.pyplot(fig_b)
+# --- ROW 1: Usage Distribution and Cost by Operator ---
+col1, col2 = st.columns(2)
 
-with tabs[1]:
-    c1, c2 = st.columns(2)
-    with c1:
-        st.subheader("Availability vs. Usage")
-        fig_av, ax_av = plt.subplots(figsize=(8, 5))
-        sns.boxplot(data=df_raw, x='Availability', y='Usage Stats (avg users/day)', palette='mako', ax=ax_av)
-        st.pyplot(fig_av)
-    with c2:
-        st.subheader("Reviews vs. Usage")
-        fig_rev, ax_rev = plt.subplots(figsize=(8, 5))
-        sns.regplot(data=df_raw, x='Reviews (Rating)', y='Usage Stats (avg users/day)', scatter_kws={'alpha':0.4}, line_kws={'color':'red'}, ax=ax_rev)
-        st.pyplot(fig_rev)
+with col1:
+    st.subheader("Usage Statistics Distribution")
+    fig_h, ax_h = plt.subplots(figsize=(8, 5))
+    sns.histplot(df_raw['Usage Stats (avg users/day)'], bins=20, kde=True, color='teal', ax=ax_h)
+    st.pyplot(fig_h)
+    st.info("**Insight:** Analyzes the frequency of station traffic to identify high-demand hubs.")
 
-with tabs[2]:
-    st.subheader("Usage Trend by Installation Year")
-    if 'Installation Year' in df_raw.columns:
-        trend_data = df_raw.groupby('Installation Year')['Usage Stats (avg users/day)'].mean().reset_index()
-        fig_line, ax_line = plt.subplots(figsize=(12, 4))
-        sns.lineplot(data=trend_data, x='Installation Year', y='Usage Stats (avg users/day)', marker='o', ax=ax_line)
-        st.pyplot(fig_line)
+with col2:
+    st.subheader("Cost vs Station Operator")
+    fig_b, ax_b = plt.subplots(figsize=(8, 5))
+    sns.boxplot(data=df_raw, x='Station Operator', y='Cost (USD/kWh)', palette='Set2', ax=ax_b)
+    plt.xticks(rotation=45)
+    st.pyplot(fig_b)
+    st.info("**Insight:** Compares pricing strategies across different market competitors.")
 
+# --- ROW 2: Availability vs Usage and Reviews vs Usage ---
+col3, col4 = st.columns(2)
+
+with col3:
+    st.subheader("Availability vs. Usage")
+    fig_av, ax_av = plt.subplots(figsize=(8, 5))
+    sns.boxplot(data=df_raw, x='Availability', y='Usage Stats (avg users/day)', palette='mako', ax=ax_av)
+    st.pyplot(fig_av)
+    st.info("**Insight:** Checks if 24/7 access significantly increases total daily user volume.")
+
+with col4:
+    st.subheader("Reviews vs. Usage")
+    fig_rev, ax_rev = plt.subplots(figsize=(8, 5))
+    sns.regplot(data=df_raw, x='Reviews (Rating)', y='Usage Stats (avg users/day)', 
+                scatter_kws={'alpha':0.4}, line_kws={'color':'red'}, ax=ax_rev)
+    st.pyplot(fig_rev)
+    st.info("**Insight:** Tests the correlation between user satisfaction and actual station traffic.")
+
+# --- ROW 3: Full Width Trend Chart ---
+st.divider()
+st.subheader("Usage Trend by Installation Year")
+if 'Installation Year' in df_raw.columns:
+    trend_data = df_raw.groupby('Installation Year')['Usage Stats (avg users/day)'].mean().reset_index()
+    fig_line, ax_line = plt.subplots(figsize=(12, 4))
+    sns.lineplot(data=trend_data, x='Installation Year', y='Usage Stats (avg users/day)', marker='o', ax=ax_line)
+    st.pyplot(fig_line)
+    st.info("**Insight:** Tracks how infrastructure age impacts modern charging demand.")
 # ===============================
 # 5. STAGE 4: CLUSTERING & PERSONA ANALYSIS
 # ===============================
