@@ -197,31 +197,23 @@ except Exception as e:
     st.error(f"Analysis error: {e}")
 
 # ===============================
-# 8. GEOSPATIAL & INSIGHTS
+# 8. STAGE 8: GEOSPATIAL ANALYSIS
 # ===============================
 st.divider()
-st.header("📍 Geographic & Strategic Summary")
+st.header("📍 Stage 8: Geographic Distribution")
+if 'Latitude' in df_raw.columns:
+    st.pydeck_chart(pdk.Deck(
+        initial_view_state=pdk.ViewState(latitude=df_raw['Latitude'].mean(), longitude=df_raw['Longitude'].mean(), zoom=2),
+        layers=[pdk.Layer('ScatterplotLayer', data=df_raw, get_position='[Longitude, Latitude]', get_color='[255, 100, 0, 160]', radius_min_pixels=3)],
+    ))
 
-col_map, col_text = st.columns([2, 1])
-
-with col_map:
-    if 'Latitude' in df_raw.columns:
-        st.pydeck_chart(pdk.Deck(
-            initial_view_state=pdk.ViewState(latitude=df_raw['Latitude'].mean(), longitude=df_raw['Longitude'].mean(), zoom=2),
-            layers=[pdk.Layer('ScatterplotLayer', data=df_raw, get_position='[Longitude, Latitude]', get_color='[255, 100, 0, 160]', radius_min_pixels=3)],
-        ))
-
-with col_text:
-    top_c = cluster_summary['Usage Stats (avg users/day)'].idxmax()
-    st.subheader("Strategic Recommendations")
-    st.info(f"""
-    1. **Expand Capacity:** Prioritize ports in **Cluster {top_c}** to maximize ROI.
-    2. **Service Maintenance:** The Ratings-Usage link proves that downtime directly leads to lost revenue.
-    3. **Green Branding:** Focus renewable energy upgrades on High-Usage segments to attract premium users.
-    """)
-
-if st.checkbox("Download Processed Data Table"):
-    st.dataframe(df_raw)
+st.subheader("Strategic Recommendations")
+top_c = cluster_summary['Usage Stats (avg users/day)'].idxmax()
+st.info(f"""
+1. **Expand Capacity:** Prioritize ports in **Cluster {top_c}** to maximize ROI.
+2. **Service Maintenance:** The Ratings-Usage link proves that downtime directly leads to lost revenue.
+3. **Green Branding:** Focus renewable energy upgrades on High-Usage segments to attract premium users.
+""")
 # ===============================
 # 9. INTERPRETATION & INSIGHTS
 # ===============================
