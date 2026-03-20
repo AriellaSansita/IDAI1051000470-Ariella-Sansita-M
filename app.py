@@ -141,6 +141,9 @@ if st.checkbox("Show Anomaly Data"):
     st.write("Top Usage Anomalies:")
     st.dataframe(usage_outliers.head())
 
+if usage_outliers== 0:
+    print("There are no anomalies")
+
 # ===============================
 # 7. STAGE 6: ASSOCIATION RULE MINING (FIXED)
 # ===============================
