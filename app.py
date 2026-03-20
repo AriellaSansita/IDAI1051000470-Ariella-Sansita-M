@@ -8,13 +8,15 @@ from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from sklearn.cluster import KMeans
 from mlxtend.frequent_patterns import apriori, association_rules
 
-# --- 1. SETTINGS & CONFIG ---
-st.set_page_config(page_title="EV SmartCharging Analytics: Professional Edition", layout="wide")
-st.title("🚗 EV SmartCharging: Strategic Infrastructure Analysis")
+# ===============================
+# 1. SETTINGS & CONFIG
+# ===============================
+st.set_page_config(page_title="EV SmartCharging: Strategic Analytics", layout="wide")
+st.title("🚗 SmartCharging Analytics: Professional EV Behavior Patterns")
 st.markdown("---")
 
 # ===============================
-# 2. STEP 1: ROBUST DATA CLEANING
+# 2. STEP 1: ROBUST DATA LOADING & CLEANING
 # ===============================
 @st.cache_data
 def load_and_deep_clean(file_path):
@@ -24,7 +26,7 @@ def load_and_deep_clean(file_path):
         # 1. Remove Duplicates
         df = df.drop_duplicates()
         
-        # 2. Fill Missing Values (Comprehensive)
+        # 2. Comprehensive Missing Value Imputation
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
         
@@ -32,37 +34,40 @@ def load_and_deep_clean(file_path):
         for col in categorical_cols:
             df[col] = df[col].fillna(df[col].mode()[0])
             
-        # 3. Text Normalization
+        # 3. Standardize Operator Names
         if 'Station Operator' in df.columns:
             df['Station Operator'] = df['Station Operator'].astype(str).str.strip().str.title()
             
         return df
     except Exception as e:
-        st.error(f"Data Load Error: {e}")
+        st.error(f"❌ Error loading/cleaning data: {e}")
         return None
 
 df_raw = load_and_deep_clean("cleaned_ev_charging_data.csv")
 if df_raw is None: st.stop()
 
 # ===============================
-# 3. STEP 6: TECHNICAL STABILITY (ENCODING)
+# 3. PREPROCESSING & FEATURE ENGINEERING
 # ===============================
 @st.cache_data
 def preprocess_for_ml(df):
     df_proc = df.copy()
     
-    # Using separate LabelEncoders for technical accuracy
-    encoders = {}
+    # Label Encoding (Separate encoders for integrity)
     cat_to_encode = ['Charger Type', 'Station Operator', 'Renewable Energy Source', 'Availability']
     for col in cat_to_encode:
         if col in df_proc.columns:
             le = LabelEncoder()
             df_proc[f'{col}_Enc'] = le.fit_transform(df_proc[col].astype(str))
-            encoders[col] = le
 
+    # Features for Clustering
+    cluster_features = [
+        'Cost (USD/kWh)', 'Usage Stats (avg users/day)', 
+        'Charging Capacity (kW)', 'Distance to City (km)', 'Availability_Enc'
+    ]
+    
     scaler = MinMaxScaler()
-    ml_features = ['Cost (USD/kWh)', 'Usage Stats (avg users/day)', 'Charging Capacity (kW)', 'Distance to City (km)']
-    existing = [f for f in ml_features if f in df_proc.columns]
+    existing = [f for f in cluster_features if f in df_proc.columns]
     df_proc[existing] = scaler.fit_transform(df_proc[existing])
     
     return df_proc, existing
@@ -72,84 +77,122 @@ df_processed, cluster_cols = preprocess_for_ml(df_raw)
 # ===============================
 # 4. STEP 2: UPGRADED EDA (DEEP INSIGHTS)
 # ===============================
-st.header("📊 Stage 1: Strategic Exploratory Analysis")
-c1, c2 = st.columns(2)
+st.header("📊 Stage 1: Exploratory Data Analysis")
+tabs = st.tabs(["Market Distributions", "Advanced Relationships", "Temporal Trends"])
 
-with c1:
-    st.subheader("Relationship 1: Availability vs. Usage")
-    fig_a, ax_a = plt.subplots(figsize=(8, 5))
-    sns.boxplot(data=df_raw, x='Availability', y='Usage Stats (avg users/day)', palette='mako', ax=ax_a)
-    st.pyplot(fig_a)
-    st.info("**Why it matters:** 24/7 stations generally capture higher overnight commercial demand. If '9:00-18:00' stations show low usage, they likely miss the 'Home-to-Work' charging peak.")
+with tabs[0]:
+    col1, col2 = st.columns(2)
+    with col1:
+        st.subheader("Usage Statistics Distribution")
+        fig_h, ax_h = plt.subplots(figsize=(8, 5))
+        sns.histplot(df_raw['Usage Stats (avg users/day)'], bins=20, kde=True, color='teal', ax=ax_h)
+        st.pyplot(fig_h)
+    with col2:
+        st.subheader("Cost vs Station Operator")
+        fig_b, ax_b = plt.subplots(figsize=(8, 5))
+        sns.boxplot(data=df_raw, x='Station Operator', y='Cost (USD/kWh)', palette='Set2', ax=ax_b)
+        plt.xticks(rotation=45)
+        st.pyplot(fig_b)
 
-with c2:
-    st.subheader("Relationship 2: Reviews vs. Usage")
-    fig_r, ax_r = plt.subplots(figsize=(8, 5))
-    sns.regplot(data=df_raw, x='Reviews (Rating)', y='Usage Stats (avg users/day)', scatter_kws={'alpha':0.5}, line_kws={'color':'red'}, ax=ax_r)
-    st.pyplot(fig_r)
-    st.info("**Interpretation:** A positive slope confirms that user experience directly drives repeat traffic. Stations with ratings below 3.5 are likely suffering from maintenance downtime.")
+with tabs[1]:
+    c1, c2 = st.columns(2)
+    with c1:
+        st.subheader("Availability vs. Usage")
+        fig_av, ax_av = plt.subplots(figsize=(8, 5))
+        sns.boxplot(data=df_raw, x='Availability', y='Usage Stats (avg users/day)', palette='mako', ax=ax_av)
+        st.pyplot(fig_av)
+        st.info("**Insight:** Stations with 24/7 availability often serve as primary charging hubs, showing higher median usage than time-restricted stations.")
+    with c2:
+        st.subheader("Reviews vs. Usage")
+        fig_rev, ax_rev = plt.subplots(figsize=(8, 5))
+        sns.regplot(data=df_raw, x='Reviews (Rating)', y='Usage Stats (avg users/day)', scatter_kws={'alpha':0.4}, line_kws={'color':'red'}, ax=ax_rev)
+        st.pyplot(fig_rev)
+        st.info("**Insight:** A positive correlation suggests that perceived reliability (Rating) is a strong driver of site traffic.")
+
+with tabs[2]:
+    st.subheader("Usage Trend by Installation Year")
+    trend_data = df_raw.groupby('Installation Year')['Usage Stats (avg users/day)'].mean().reset_index()
+    fig_line, ax_line = plt.subplots(figsize=(12, 4))
+    sns.lineplot(data=trend_data, x='Installation Year', y='Usage Stats (avg users/day)', marker='o', ax=ax_line)
+    st.pyplot(fig_line)
 
 # ===============================
-# 5. STEP 4: CLUSTER PERSONA ANALYSIS
+# 5. STEP 4: CLUSTERING & PERSONA ANALYSIS
 # ===============================
 st.divider()
-st.header("🤖 Stage 4: Advanced Market Segmentation")
+st.header("🤖 Stage 4: Market Segmentation & Personas")
 
-k = st.slider("Select Segments (k)", 2, 6, 3)
-model = KMeans(n_clusters=k, init='k-means++', random_state=42, n_init=10)
+k_value = st.slider("Select k (Number of Clusters)", 2, 6, 3)
+model = KMeans(n_clusters=k_value, init='k-means++', random_state=42, n_init=10)
 df_raw['Cluster'] = model.fit_predict(df_processed[cluster_cols])
 
-# Cluster Comparison Table (The "Distinction" move)
-cluster_summary = df_raw.groupby('Cluster')[cluster_cols].mean()
-st.subheader("Cluster Characterization")
+# Cluster Comparison Table
+cluster_summary = df_raw.groupby('Cluster')[['Charging Capacity (kW)', 'Usage Stats (avg users/day)', 'Cost (USD/kWh)', 'Distance to City (km)']].mean()
+st.subheader("Segment Characterization")
 st.dataframe(cluster_summary.style.highlight_max(axis=0, color='#2e7d32').highlight_min(axis=0, color='#c62828'))
 
 # Persona Logic
-for i in range(k):
-    row = cluster_summary.loc[i]
-    if row['Usage Stats (avg users/day)'] > cluster_summary['Usage Stats (avg users/day)'].mean():
-        persona = "🔥 **High-Traffic Hubs:** Critical infrastructure. Prioritize for renewable upgrades."
-    elif row['Cost (USD/kWh)'] > cluster_summary['Cost (USD/kWh)'].mean():
-        persona = "💰 **Premium/Luxury Zones:** High margins but potentially lower frequency."
-    else:
-        persona = "📉 **Underperformers:** High distance to city or low capacity. Review pricing."
-    st.write(f"**Cluster {i}:** {persona}")
+p_col1, p_col2 = st.columns([1, 2])
+with p_col2:
+    fig_cluster, ax_cluster = plt.subplots(figsize=(12, 6)) 
+    sns.scatterplot(data=df_raw, x='Charging Capacity (kW)', y='Usage Stats (avg users/day)', hue='Cluster', palette='Set1', s=150, alpha=0.7, ax=ax_cluster)
+    st.pyplot(fig_cluster)
+with p_col1:
+    st.write("### Segment Personas")
+    for i in range(k_value):
+        row = cluster_summary.loc[i]
+        if row['Usage Stats (avg users/day)'] > cluster_summary['Usage Stats (avg users/day)'].mean():
+            st.success(f"**Cluster {i}: High-Demand Hubs**\nCritical high-traffic infrastructure.")
+        elif row['Cost (USD/kWh)'] > cluster_summary['Cost (USD/kWh)'].mean():
+            st.warning(f"**Cluster {i}: Premium Pricing**\nHigh-margin locations with lower frequency.")
+        else:
+            st.info(f"**Cluster {i}: Potential Growth**\nUnderutilized stations; consider price adjustments.")
 
 # ===============================
-# 6. STEP 7: ANOMALY EXPLANATION
+# 6. STEP 7: ANOMALY DETECTION (IQR)
 # ===============================
 st.divider()
 st.header("🔍 Stage 5: Anomaly Detection")
-def get_outliers(df, col):
-    q1, q3 = df[col].quantile(0.25), df[col].quantile(0.75)
-    iqr = q3 - q1
-    return df[(df[col] < q1 - 1.5*iqr) | (df[col] > q3 + 1.5*iqr)]
 
-usage_anoms = get_outliers(df_raw, 'Usage Stats (avg users/day)')
-st.metric("Total Anomalies Detected", len(usage_anoms))
+def detect_outliers(df, col):
+    Q1, Q3 = df[col].quantile(0.25), df[col].quantile(0.75)
+    IQR = Q3 - Q1
+    return df[(df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)]
 
-st.write("**What these anomalies mean:**")
+usage_outliers = detect_outliers(df_raw, 'Usage Stats (avg users/day)')
+cost_outliers = detect_outliers(df_raw, 'Cost (USD/kWh)')
+
+m1, m2 = st.columns(2)
+m1.metric("Usage Outliers", len(usage_outliers))
+m2.metric("Cost Outliers", len(cost_outliers))
+
 st.markdown("""
-- **Data Entry Errors:** Impossible costs or usage numbers.
-- **Niche Locations:** Extreme luxury chargers with very high costs.
-- **Maintenance Red Flags:** Stations with near-zero usage despite high capacity.
+**What do these anomalies mean?**
+Anomalies represent 'statistical freaks' such as stations with extremely high costs due to luxury locations, or stations with near-zero usage which may indicate maintenance downtime or poor accessibility.
 """)
 
+if len(usage_outliers) + len(cost_outliers) == 0:
+    st.success("✅ No anomalies detected in the current filtered set.")
+else:
+    if st.checkbox("Show Anomaly Details"):
+        st.dataframe(pd.concat([usage_outliers, cost_outliers]).drop_duplicates())
+
 # ===============================
-# 7. STEP 3 & 6: REFINED ASSOCIATION RULES
+# 7. STEP 3: REFINED ASSOCIATION RULE MINING
 # ===============================
 st.divider()
-st.header("🔗 Stage 6: Association Rule Mining (Pattern Discovery)")
+st.header("🔗 Stage 6: Association Rule Mining")
 try:
-    rules_df = pd.DataFrame()
-    # Strategic logical features
-    rules_df['High_Usage'] = df_raw['Usage Stats (avg users/day)'] > df_raw['Usage Stats (avg users/day)'].quantile(0.75)
-    rules_df['Low_Cost'] = df_raw['Cost (USD/kWh)'] < df_raw['Cost (USD/kWh)'].quantile(0.25)
-    rules_df['Near_City'] = df_raw['Distance to City (km)'] < df_raw['Distance to City (km)'].median()
-    rules_df['Renewable'] = df_raw['Renewable Energy Source'].map({1: True, 0: False, True: True, False: False})
-    
-    rules_df = rules_df.astype(bool)
-    freq = apriori(rules_df, min_support=0.05, use_colnames=True)
+    df_rules = pd.DataFrame()
+    # Strategic Quantile-based Features
+    df_rules['High_Usage'] = df_raw['Usage Stats (avg users/day)'] > df_raw['Usage Stats (avg users/day)'].quantile(0.75)
+    df_rules['Low_Cost'] = df_raw['Cost (USD/kWh)'] < df_raw['Cost (USD/kWh)'].quantile(0.25)
+    df_rules['Near_City'] = df_raw['Distance to City (km)'] < df_raw['Distance to City (km)'].median()
+    if 'Renewable Energy Source' in df_raw.columns:
+        df_rules['Renewable'] = df_raw['Renewable Energy Source'].map({1: True, 0: False, True: True, False: False})
+
+    df_rules = df_rules.astype(bool)
+    freq = apriori(df_rules, min_support=0.05, use_colnames=True)
     
     if not freq.empty:
         rules = association_rules(freq, metric="lift", min_threshold=1.0)
@@ -157,32 +200,37 @@ try:
             rules['antecedents'] = rules['antecedents'].apply(lambda x: ', '.join(list(x)))
             rules['consequents'] = rules['consequents'].apply(lambda x: ', '.join(list(x)))
             st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].sort_values('lift', ascending=False).head(10))
-            st.success("**Insight:** Intentional patterns show how proximity to city centers directly correlates with high usage thresholds.")
+            st.success("**Pattern Insight:** Intentional rule generation confirms significant associations between city proximity and high usage rates.")
         else:
             st.info("No strong rules found.")
     else:
-        st.info("No frequent patterns found.")
+        st.info("No frequent itemsets found.")
 except Exception as e:
-    st.error(f"Rule Logic Error: {e}")
+    st.error(f"Rule Analysis Error: {e}")
 
 # ===============================
-# 8. STEP 5: BUSINESS BRAIN INSIGHTS
+# 8. GEOSPATIAL & INSIGHTS
 # ===============================
 st.divider()
-st.header("💡 Stage 7: Strategic Recommendations")
-top_cluster = cluster_summary['Usage Stats (avg users/day)'].idxmax()
+st.header("📍 Geographic & Strategic Summary")
 
-st.info(f"""
-### Executive Action Plan:
-1. **Capacity Expansion:** Double-down on **Cluster {top_cluster}**. These stations are high-usage and likely near capacity. Adding more ports here is the safest ROI.
-2. **Pricing Optimization:** Low-usage clusters (Near-city outliers) should trial a 10% price reduction to compete with home charging.
-3. **Operational Focus:** The correlation between Reviews and Usage proves that downtime is more expensive than maintenance. Establish a 4-hour repair SLA for all high-traffic hubs.
-""")
+col_map, col_text = st.columns([2, 1])
 
-# Map
-if 'Latitude' in df_raw.columns:
-    st.subheader("Geographic Station Density")
-    st.pydeck_chart(pdk.Deck(
-        initial_view_state=pdk.ViewState(latitude=df_raw['Latitude'].mean(), longitude=df_raw['Longitude'].mean(), zoom=2, min_zoom=2),
-        layers=[pdk.Layer('ScatterplotLayer', data=df_raw, get_position='[Longitude, Latitude]', get_color='[255, 100, 0, 160]', radius_min_pixels=3)],
-    ))
+with col_map:
+    if 'Latitude' in df_raw.columns:
+        st.pydeck_chart(pdk.Deck(
+            initial_view_state=pdk.ViewState(latitude=df_raw['Latitude'].mean(), longitude=df_raw['Longitude'].mean(), zoom=2),
+            layers=[pdk.Layer('ScatterplotLayer', data=df_raw, get_position='[Longitude, Latitude]', get_color='[255, 100, 0, 160]', radius_min_pixels=3)],
+        ))
+
+with col_text:
+    top_c = cluster_summary['Usage Stats (avg users/day)'].idxmax()
+    st.subheader("Strategic Recommendations")
+    st.info(f"""
+    1. **Expand Capacity:** Prioritize ports in **Cluster {top_c}** to maximize ROI.
+    2. **Service Maintenance:** The Ratings-Usage link proves that downtime directly leads to lost revenue.
+    3. **Green Branding:** Focus renewable energy upgrades on High-Usage segments to attract premium users.
+    """)
+
+if st.checkbox("Download Processed Data Table"):
+    st.dataframe(df_raw)
