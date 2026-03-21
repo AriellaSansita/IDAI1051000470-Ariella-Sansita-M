@@ -13,16 +13,6 @@ from mlxtend.frequent_patterns import apriori, association_rules
 # ===============================
 st.set_page_config(page_title="EV SmartCharging: Strategic Analytics", layout="wide")
 st.title("🚗 SmartCharging Analytics: Professional EV Behavior Patterns")
-
-# Explicit Scope for Rubric Marks
-with st.expander("📋 Project Scope & Objectives", expanded=True):
-    st.markdown("""
-    **Objective:** Identify strategic patterns in EV charging infrastructure to optimize resource allocation.
-    * **EDA:** Analyze distribution of usage, costs, and operator performance.
-    * **Clustering:** Segment stations into personas (e.g., High-Demand Hubs).
-    * **Anomalies:** Detect statistical outliers in pricing and usage.
-    * **Association Mining:** Discover hidden correlations between charger types and demand.
-    """)
 st.markdown("---")
 
 # ===============================
@@ -31,20 +21,14 @@ st.markdown("---")
 @st.cache_data
 def load_and_deep_clean(file_path):
     try:
+        # Note: Ensure 'cleaned_ev_charging_data.csv' exists in your directory
         df = pd.read_csv(file_path)
-        # Drop duplicates based on Station ID if available to meet rubric
-        if 'Station ID' in df.columns:
-            df = df.drop_duplicates(subset=['Station ID'])
-        else:
-            df = df.drop_duplicates()
-            
+        df = df.drop_duplicates()
         numeric_cols = df.select_dtypes(include=[np.number]).columns
         df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
-        
         categorical_cols = df.select_dtypes(include=['object']).columns
         for col in categorical_cols:
             df[col] = df[col].fillna(df[col].mode()[0])
-            
         if 'Station Operator' in df.columns:
             df['Station Operator'] = df['Station Operator'].astype(str).str.strip().str.title()
         return df
@@ -52,9 +36,9 @@ def load_and_deep_clean(file_path):
         st.error(f"❌ Error loading data: {e}")
         return None
 
-# Ensure the file name matches your actual CSV file
 df_raw = load_and_deep_clean("cleaned_ev_charging_data.csv")
-if df_raw is None: st.stop()
+if df_raw is None: 
+    st.stop()
 
 # ===============================
 # 3. PREPROCESSING & FEATURE ENGINEERING
@@ -96,11 +80,12 @@ with col2:
     st.pyplot(fig_b)
 
 # ===============================
-# 5. STAGE 4: CLUSTERING & PERSONA ANALYSIS
+# 5. STAGE 4: CLUSTERING
 # ===============================
 st.divider()
 st.header("🤖 Stage 4: Machine Learning - Station Clustering")
 
+# Simple Elbow Method Calculation
 wcss = [KMeans(n_clusters=i, init='k-means++', random_state=42, n_init=10).fit(df_processed[cluster_cols]).inertia_ for i in range(1, 11)]
 fig_elbow, ax_elbow = plt.subplots(figsize=(12, 3))
 ax_elbow.plot(range(1, 11), wcss, marker='o', color='#1f77b4')
@@ -115,6 +100,7 @@ with col_scat:
     fig_cluster, ax_cluster = plt.subplots(figsize=(12, 6)) 
     sns.scatterplot(data=df_raw, x='Charging Capacity (kW)', y='Usage Stats (avg users/day)', hue='Cluster', palette='Set1', s=150, alpha=0.7, ax=ax_cluster)
     st.pyplot(fig_cluster)
+
 with col_pers:
     cluster_summary = df_raw.groupby('Cluster')[['Charging Capacity (kW)', 'Usage Stats (avg users/day)', 'Cost (USD/kWh)']].mean()
     st.write("### Segment Personas")
@@ -136,42 +122,58 @@ def detect_outliers(df, col):
     return df[(df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)]
 
 usage_outliers = detect_outliers(df_raw, 'Usage Stats (avg users/day)')
+cost_outliers = detect_outliers(df_raw, 'Cost (USD/kWh)')
+
 m1, m2 = st.columns(2)
 m1.metric("Usage Outliers", len(usage_outliers))
-
-if not usage_outliers.empty:
-    st.write("### Top Anomalous Stations")
-    st.dataframe(usage_outliers.head())
+m2.metric("Cost Outliers", len(cost_outliers))
 
 # ===============================
 # 7. STAGE 6: ASSOCIATION RULE MINING
 # ===============================
 st.divider()
 st.header("🔗 Stage 6: Association Rule Mining")
+rules = None # Initialize for later use in insights
 try:
     df_rules = pd.DataFrame()
     df_rules['HighUsage'] = df_raw['Usage Stats (avg users/day)'] > df_raw['Usage Stats (avg users/day)'].quantile(0.5)
     df_rules['FastCharger'] = df_raw['Charging Capacity (kW)'] > df_raw['Charging Capacity (kW)'].quantile(0.5)
-    df_rules['Renewable'] = df_raw['Renewable Energy Source'].astype(str).str.lower() == 'yes'
+    df_rules['Renewable'] = df_raw['Renewable Energy Source'].astype(bool)
+    df_rules['PremiumPrice'] = df_raw['Cost (USD/kWh)'] > df_raw['Cost (USD/kWh)'].quantile(0.5)
     df_rules = df_rules.astype(bool)
     
-    freq = apriori(df_rules, min_support=0.05, use_colnames=True)
+    freq = apriori(df_rules, min_support=0.02, use_colnames=True)
+    
     if not freq.empty:
         rules = association_rules(freq, metric="lift", min_threshold=1.0)
-        st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].head(10))
+        if not rules.empty:
+            rules['antecedents'] = rules['antecedents'].apply(lambda x: ', '.join(list(x)))
+            rules['consequents'] = rules['consequents'].apply(lambda x: ', '.join(list(x)))
+            rules = rules.sort_values('lift', ascending=False)
+            st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].head(10), use_container_width=True)
 except Exception as e:
     st.error(f"Analysis error: {e}")
 
 # ===============================
-# 8. STAGE 8: GEOSPATIAL ANALYSIS
+# 8. STAGE 8: GEOSPATIAL & SUMMARY
 # ===============================
 st.divider()
-st.header("📍 Stage 8: Geographic Distribution")
+st.header("📍 Stage 8: Geographic & Insights")
 if 'Latitude' in df_raw.columns:
     st.pydeck_chart(pdk.Deck(
-        initial_view_state=pdk.ViewState(latitude=df_raw['Latitude'].mean(), longitude=df_raw['Longitude'].mean(), zoom=4),
-        layers=[pdk.Layer('ScatterplotLayer', data=df_raw, get_position='[Longitude, Latitude]', get_color='[255, 100, 0, 160]', radius_min_pixels=5)],
+        initial_view_state=pdk.ViewState(latitude=df_raw['Latitude'].mean(), longitude=df_raw['Longitude'].mean(), zoom=2),
+        layers=[pdk.Layer('ScatterplotLayer', data=df_raw, get_position='[Longitude, Latitude]', get_color='[255, 100, 0, 160]', radius_min_pixels=3)],
     ))
+
+st.subheader("Key Findings")
+rule_text = "No strong patterns found"
+if rules is not None and not rules.empty:
+    rule_text = f"Link between '{rules.iloc[0]['antecedents']}' and '{rules.iloc[0]['consequents']}'"
+
+st.info(f"""
+- **Anomalies:** Identified {len(usage_outliers)} stations with irregular usage patterns.
+- **Rules:** {rule_text}.
+""")
 
 if st.checkbox("View Final Data Table"):
     st.dataframe(df_raw)
