@@ -146,64 +146,112 @@ if len(cluster_cols) > 0:
                 st.warning(f"Cluster {i}: Daily Commuters (Moderate)")
 
 # ===============================
-# 6. ANOMALY DETECTION (Stage 6) 
+# 6. STAGE 5: ANOMALY DETECTION
 # ===============================
 st.divider()
-st.header("🔍 Stage 6: Anomaly Detection")
-def get_outliers(df, col):
+st.header("🔍 Stage 5: Anomaly Detection")
+
+def detect_outliers(df, col):
     if col in df.columns:
-        q1, q3 = df[col].quantile(0.25), df[col].quantile(0.75)
-        iqr = q3 - q1
-        return df[(df[col] < q1 - 1.5*iqr) | (df[col] > q3 + 1.5*iqr)]
+        Q1, Q3 = df[col].quantile(0.25), df[col].quantile(0.75)
+        IQR = Q3 - Q1
+        outliers = df[(df[col] < Q1 - 1.5 * IQR) | (df[col] > Q3 + 1.5 * IQR)]
+        return outliers
     return pd.DataFrame()
 
-usage_anomalies = get_outliers(df_filtered, 'Usage Stats (avg users/day)')
-if usage_anomalies.empty:
-    st.success("✅ No usage anomalies detected. All stations operating within normal parameters.")
+usage_outliers = detect_outliers(df_raw, 'Usage Stats (avg users/day)')
+cost_outliers = detect_outliers(df_raw, 'Cost (USD/kWh)')
+
+m1, m2 = st.columns(2)
+
+# Display Metrics with logic for "None"
+if len(usage_outliers) > 0:
+    m1.metric("Usage Outliers", len(usage_outliers), delta="Action Required", delta_color="inverse")
+    st.warning(f"Detected {len(usage_outliers)} unusual usage patterns.")
 else:
-    st.error(f"⚠️ Detected {len(usage_anomalies)} usage anomalies!")
-    st.write("These stations show abnormal consumption behavior.")
-    st.dataframe(usage_anomalies.head())
+    m1.metric("Usage Outliers", "None")
+    m1.success("✅ Usage patterns are consistent.")
+
+if len(cost_outliers) > 0:
+    m2.metric("Cost Outliers", len(cost_outliers), delta="Check Pricing", delta_color="inverse")
+    st.warning(f"Detected {len(cost_outliers)} pricing anomalies.")
+else:
+    m2.metric("Cost Outliers", "None")
+    m2.success("✅ Pricing is within normal range.")
 
 # ===============================
-# 7. ASSOCIATION RULES (Stage 5) 
+# 7. STAGE 6: ASSOCIATION RULE MINING
 # ===============================
 st.divider()
-st.header("🔗 Stage 5: Association Rule Mining")
+st.header("🔗 Stage 6: Association Rule Mining")
+rules_df = None 
+
 try:
-    rule_df = pd.DataFrame({
-        'HighUsage': df_filtered['Usage Stats (avg users/day)'] > df_filtered['Usage Stats (avg users/day)'].median(),
-        'FastCharge': df_filtered['Charging Capacity (kW)'] > df_filtered['Charging Capacity (kW)'].median(),
-        'Renewable': df_filtered['Renewable Energy Source'].astype(str).str.lower().isin(['yes', 'true', '1'])
-    }).astype(bool)
+    df_rules = pd.DataFrame()
+    df_rules['HighUsage'] = df_raw['Usage Stats (avg users/day)'] > df_raw['Usage Stats (avg users/day)'].quantile(0.5)
+    df_rules['FastCharger'] = df_raw['Charging Capacity (kW)'] > df_raw['Charging Capacity (kW)'].quantile(0.5)
     
-    freq = apriori(rule_df, min_support=0.05, use_colnames=True)
-    rules = association_rules(freq, metric="lift", min_threshold=1.0)
-    if not rules.empty:
-        st.write("Discovered relationships between station features and demand:")
-        st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']].head(5))
-    else:
-        st.write("No strong associations found in the current filtered data.")
-except Exception:
-    st.write("Insufficient variance for Association Rule Mining.")
+    if 'Renewable Energy Source' in df_raw.columns:
+        # Check if it's already boolean or contains strings like 'Yes'
+        df_rules['Renewable'] = df_raw['Renewable Energy Source'].apply(lambda x: True if str(x).lower() in ['yes', 'true', '1.0', '1'] else False)
+    
+    df_rules['PremiumPrice'] = df_raw['Cost (USD/kWh)'] > df_raw['Cost (USD/kWh)'].quantile(0.5)
+    
+    # MLxtend requires boolean types specifically
+    df_rules = df_rules.astype(bool)
+    
+    freq = apriori(df_rules, min_support=0.05, use_colnames=True)
+    
+    if not freq.empty:
+        # Updated association_rules call for modern mlxtend
+        rules_df = association_rules(freq, metric="lift", min_threshold=1.0)
+        if not rules_df.empty:
+            rules_df['antecedents'] = rules_df['antecedents'].apply(lambda x: ', '.join(list(x)))
+            rules_df['consequents'] = rules_df['consequents'].apply(lambda x: ', '.join(list(x)))
+            rules_df = rules_df.sort_values('lift', ascending=False)
+            st.dataframe(rules_df[['antecedents', 'consequents', 'support', 'confidence', 'lift']].head(10), use_container_width=True)
+        else:
+            st.write("No strong association rules found with current thresholds.")
+except Exception as e:
+    st.error(f"Association Analysis error: {e}")
 
 # ===============================
-# 8. GEOSPATIAL & INSIGHTS (Stage 7 & 8) 
+# 8. STAGE 8: GEOSPATIAL & SUMMARY
 # ===============================
 st.divider()
-st.header("📍 Stage 8: Geographic Distribution & Insights")
-if 'Latitude' in df_filtered.columns and 'Longitude' in df_filtered.columns:
-    st.pydeck_chart(pdk.Deck(
-        initial_view_state=pdk.ViewState(latitude=df_filtered['Latitude'].mean(), longitude=df_filtered['Longitude'].mean(), zoom=3),
-        layers=[pdk.Layer('ScatterplotLayer', data=df_filtered, get_position='[Longitude, Latitude]', get_color='[200, 30, 0, 160]', radius_min_pixels=5)]
-    ))
+st.header("📍 Stage 8: Geographic & Insights")
 
-st.subheader("Key Strategic Findings ")
+if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
+    # Drop rows with NaN in coordinates for PyDeck
+    map_data = df_raw.dropna(subset=['Latitude', 'Longitude'])
+    st.pydeck_chart(pdk.Deck(
+        initial_view_state=pdk.ViewState(
+            latitude=map_data['Latitude'].mean(), 
+            longitude=map_data['Longitude'].mean(), 
+            zoom=4
+        ),
+        layers=[
+            pdk.Layer(
+                'ScatterplotLayer', 
+                data=map_data, 
+                get_position='[Longitude, Latitude]', 
+                get_color='[255, 100, 0, 160]', 
+                radius_min_pixels=5
+            ),
+        ],
+    ))
+else:
+    st.info("Geographic data (Latitude/Longitude) not found in dataset.")
+
+st.subheader("Key Findings")
+rule_text = "No strong patterns found"
+if rules_df is not None and not rules_df.empty:
+    rule_text = f"Significant link between '{rules_df.iloc[0]['antecedents']}' and '{rules_df.iloc[0]['consequents']}'"
+
 st.info(f"""
-- **Infrastructure Strategy**: Prioritize expansion in regions with 'Heavy User' clusters.
-- **Reliability**: Investigate {len(usage_anomalies)} anomalies for potential faulty equipment or station abuse.
-- **Demand Optimization**: Line trends show usage growth; pricing should be optimized during peak years/times.
+- **Anomalies:** Identified {len(usage_outliers)} stations with irregular usage and {len(cost_outliers)} with irregular pricing.
+- **Rules Analysis:** {rule_text}.
 """)
 
-if st.checkbox("View Processed Dataset"):
-    st.dataframe(df_filtered)
+if st.checkbox("View Final Data Table"):
+    st.dataframe(df_raw)
