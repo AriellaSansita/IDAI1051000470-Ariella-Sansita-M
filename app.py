@@ -273,16 +273,6 @@ if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
 else:
     st.info("Geographic data (Latitude/Longitude) not found in dataset.")
 
-st.subheader("Key Findings")
-rule_text = "No strong patterns found"
-if rules_df is not None and not rules_df.empty:
-    rule_text = f"Significant link between '{rules_df.iloc[0]['antecedents']}' and '{rules_df.iloc[0]['consequents']}'"
-
-st.info(f"""
-- **Anomalies:** Identified {len(usage_outliers)} stations with irregular usage and {len(cost_outliers)} with irregular pricing.
-- **Rules Analysis:** {rule_text}.
-""")
-
 if st.checkbox("View Final Data Table"):
     st.dataframe(df_raw)
 
