@@ -251,26 +251,25 @@ if rules_df is not None and not rules_df.empty:
 st.divider()
 st.header("📍 Stage 8: Geographic Cluster Distribution")
 
-# Use df_filtered because it contains the 'Cluster' labels from Stage 4
-if 'Latitude' in df_filtered.columns and 'Longitude' in df_filtered.columns and 'Cluster' in df_filtered.columns:
+# Use df_filtered to ensure we have the 'Cluster' column from Stage 4
+if 'Latitude' in df_filtered.columns and 'Cluster' in df_filtered.columns:
     
-    # Define a color dictionary for the clusters
+    # Define a high-contrast color palette for clusters
     cluster_colors = {
-        0: [255, 0, 0, 160],    # Red
-        1: [0, 255, 0, 160],    # Green
-        2: [0, 0, 255, 160],    # Blue
-        3: [255, 165, 0, 160],  # Orange
-        4: [128, 0, 128, 160],  # Purple
-        5: [0, 255, 255, 160]   # Cyan
+        0: [255, 50, 50, 200],    # Bright Red
+        1: [50, 255, 50, 200],    # Bright Green
+        2: [50, 150, 255, 200],   # Bright Blue
+        3: [255, 200, 50, 200],   # Gold
+        4: [200, 50, 255, 200]    # Purple
     }
 
-    # FIX: Use a lambda or map without fillna(list) to avoid TypeError
+    # Prepare data and apply colors based on Cluster ID
     map_df = df_filtered.dropna(subset=['Latitude', 'Longitude']).copy()
-    map_df['color'] = map_df['Cluster'].apply(lambda x: cluster_colors.get(x, [200, 200, 200, 160]))
+    map_df['color'] = map_df['Cluster'].apply(lambda x: cluster_colors.get(x, [200, 200, 200, 150]))
 
-    # Display the Interactive Map as required by Stage 8 
+    # Enhanced interactive map
     st.pydeck_chart(pdk.Deck(
-        map_style='mapbox://styles/mapbox/light-v9',
+        map_style='mapbox://styles/mapbox/dark-v10',
         initial_view_state=pdk.ViewState(
             latitude=map_df['Latitude'].mean(),
             longitude=map_df['Longitude'].mean(),
@@ -283,26 +282,28 @@ if 'Latitude' in df_filtered.columns and 'Longitude' in df_filtered.columns and 
                 data=map_df,
                 get_position='[Longitude, Latitude]',
                 get_color='color',
-                get_radius=15000,
-                pickable=True
+                get_radius=30000,          # Large enough to see clusters
+                radius_min_pixels=8,       # Fixes the 'tiny dot' issue from your screenshot
+                pickable=True,
+                stroked=True,
+                filled=True,
+                line_width_min_pixels=1,
+                get_line_color=[255, 255, 255] # White border for contrast
             ),
         ],
         tooltip={"text": "Operator: {Station Operator}\nCluster: {Cluster}"}
     ))
 else:
-    st.info("Ensure clustering is completed and coordinates are available to view the map.")
+    st.warning("Ensure Latitude/Longitude and Cluster data are available.")
 
-# Summary Section 
 st.subheader("Key Findings & Strategic Insights")
+# Dynamic insights based on analysis results
 rule_text = "No strong patterns found"
 if rules_df is not None and not rules_df.empty:
     rule_text = f"Significant relationship discovered between '{rules_df.iloc[0]['antecedents']}' and '{rules_df.iloc[0]['consequents']}'"
 
 st.info(f"""
-- **Anomalies:** Identified {len(usage_outliers)} stations with irregular usage patterns and {len(cost_outliers)} pricing outliers. 
-- **Market Basket Analysis:** {rule_text}. 
-- **Infrastructure Growth:** Yearly trends indicate shifts in charging demand since installation. 
+- **Anomalies:** Identified {len(usage_outliers)} stations with irregular usage and {len(cost_outliers)} with irregular pricing.
+- **Market Basket Analysis:** {rule_text}.
+- **Geospatial Trends:** The map above highlights regional concentrations of charging behaviors.
 """)
-
-if st.checkbox("View Final Data Table"):
-    st.dataframe(df_filtered)
