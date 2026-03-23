@@ -269,32 +269,30 @@ if 'Latitude' in df_filtered.columns and 'Cluster' in df_filtered.columns:
 
     # Enhanced interactive map
     st.pydeck_chart(pdk.Deck(
-        map_style='mapbox://styles/mapbox/dark-v10',
-        initial_view_state=pdk.ViewState(
-            latitude=map_df['Latitude'].mean(),
-            longitude=map_df['Longitude'].mean(),
-            zoom=3,
-            pitch=45
+    # 'light' or 'road' styles often have better default visibility 
+    map_style='mapbox://styles/mapbox/light-v9', 
+    initial_view_state=pdk.ViewState(
+        latitude=map_df['Latitude'].mean(),
+        longitude=map_df['Longitude'].mean(),
+        zoom=3,
+        pitch=45
+    ),
+    layers=[
+        pdk.Layer(
+            'ScatterplotLayer',
+            data=map_df,
+            get_position='[Longitude, Latitude]',
+            get_color='color',
+            get_radius=20000, # Smaller radius looks more like real station points
+            radius_min_pixels=5,
+            pickable=True,
+            stroked=True,
+            line_width_min_pixels=1,
+            get_line_color=[255, 255, 255]
         ),
-        layers=[
-            pdk.Layer(
-                'ScatterplotLayer',
-                data=map_df,
-                get_position='[Longitude, Latitude]',
-                get_color='color',
-                get_radius=30000,          # Large enough to see clusters
-                radius_min_pixels=8,       # Fixes the 'tiny dot' issue from your screenshot
-                pickable=True,
-                stroked=True,
-                filled=True,
-                line_width_min_pixels=1,
-                get_line_color=[255, 255, 255] # White border for contrast
-            ),
-        ],
-        tooltip={"text": "Operator: {Station Operator}\nCluster: {Cluster}"}
-    ))
-else:
-    st.warning("Ensure Latitude/Longitude and Cluster data are available.")
+    ],
+    tooltip={"text": "Operator: {Station Operator}\nCluster: {Cluster}"}
+))
 
 st.subheader("Key Findings & Strategic Insights")
 # Dynamic insights based on analysis results
