@@ -249,40 +249,60 @@ if rules_df is not None and not rules_df.empty:
 # 8. STAGE 8: GEOSPATIAL & SUMMARY
 # ===============================
 st.divider()
-st.header("📍 Stage 8: Geographic & Insights")
+st.header("📍 Stage 8: Geographic Cluster Distribution")
 
-# --- REPLACE YOUR STAGE 8 MAP WITH THIS ---
-if 'Latitude' in df_filtered.columns and 'Cluster' in df_filtered.columns:
-    st.subheader("Geographic Cluster Distribution")
+# Use df_filtered because it contains the 'Cluster' labels from Stage 4
+if 'Latitude' in df_filtered.columns and 'Longitude' in df_filtered.columns and 'Cluster' in df_filtered.columns:
     
-    # Create a color lookup for clusters
+    # Define a color dictionary for the clusters
     cluster_colors = {
-        0: [255, 0, 0, 150],   # Red
-        1: [0, 255, 0, 150],   # Green
-        2: [0, 0, 255, 150],   # Blue
-        3: [255, 165, 0, 150], # Orange
-        4: [128, 0, 128, 150]  # Purple
+        0: [255, 0, 0, 160],    # Red
+        1: [0, 255, 0, 160],    # Green
+        2: [0, 0, 255, 160],    # Blue
+        3: [255, 165, 0, 160],  # Orange
+        4: [128, 0, 128, 160],  # Purple
+        5: [0, 255, 255, 160]   # Cyan
     }
-    
-    df_filtered['color'] = df_filtered['Cluster'].map(cluster_colors).fillna([[255, 255, 255, 150]])
 
+    # FIX: Use a lambda or map without fillna(list) to avoid TypeError
+    map_df = df_filtered.dropna(subset=['Latitude', 'Longitude']).copy()
+    map_df['color'] = map_df['Cluster'].apply(lambda x: cluster_colors.get(x, [200, 200, 200, 160]))
+
+    # Display the Interactive Map as required by Stage 8 
     st.pydeck_chart(pdk.Deck(
         map_style='mapbox://styles/mapbox/light-v9',
         initial_view_state=pdk.ViewState(
-            latitude=df_filtered['Latitude'].mean(),
-            longitude=df_filtered['Longitude'].mean(),
+            latitude=map_df['Latitude'].mean(),
+            longitude=map_df['Longitude'].mean(),
             zoom=3,
-            pitch=50,
+            pitch=45
         ),
         layers=[
             pdk.Layer(
                 'ScatterplotLayer',
-                data=df_filtered,
+                data=map_df,
                 get_position='[Longitude, Latitude]',
                 get_color='color',
-                get_radius=20000, # Radius in meters
+                get_radius=15000,
                 pickable=True
             ),
         ],
-        tooltip={"text": "Cluster: {Cluster}\nOperator: {Station Operator}"}
+        tooltip={"text": "Operator: {Station Operator}\nCluster: {Cluster}"}
     ))
+else:
+    st.info("Ensure clustering is completed and coordinates are available to view the map.")
+
+# Summary Section 
+st.subheader("Key Findings & Strategic Insights")
+rule_text = "No strong patterns found"
+if rules_df is not None and not rules_df.empty:
+    rule_text = f"Significant relationship discovered between '{rules_df.iloc[0]['antecedents']}' and '{rules_df.iloc[0]['consequents']}'"
+
+st.info(f"""
+- **Anomalies:** Identified {len(usage_outliers)} stations with irregular usage patterns and {len(cost_outliers)} pricing outliers. 
+- **Market Basket Analysis:** {rule_text}. 
+- **Infrastructure Growth:** Yearly trends indicate shifts in charging demand since installation. 
+""")
+
+if st.checkbox("View Final Data Table"):
+    st.dataframe(df_filtered)
