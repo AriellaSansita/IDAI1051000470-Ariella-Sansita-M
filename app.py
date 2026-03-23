@@ -179,6 +179,24 @@ else:
     m2.metric("Cost Outliers", "None")
     m2.success("✅ Pricing is within normal range.")
 
+# --- ADD THIS TO STAGE 5 (ANOMALY DETECTION) ---
+st.subheader("Strategic Anomalies: High Cost vs. Low Performance")
+
+# Logic to find stations in the top 25% of cost but bottom 25% of usage
+high_cost_threshold = df_filtered['Cost (USD/kWh)'].quantile(0.75)
+low_usage_threshold = df_filtered['Usage Stats (avg users/day)'].quantile(0.25)
+
+strategic_anomalies = df_filtered[
+    (df_filtered['Cost (USD/kWh)'] >= high_cost_threshold) & 
+    (df_filtered['Usage Stats (avg users/day)'] <= low_usage_threshold)
+]
+
+if not strategic_anomalies.empty:
+    st.warning(f"Found {len(strategic_anomalies)} stations with High Cost but Low Usage. These may require pricing adjustments.")
+    st.dataframe(strategic_anomalies[['Station ID', 'Station Operator', 'Cost (USD/kWh)', 'Usage Stats (avg users/day)']])
+else:
+    st.success("✅ No 'High Cost / Low Usage' anomalies found.")
+
 # ===============================
 # 7. STAGE 6: ASSOCIATION RULE MINING
 # ===============================
@@ -214,6 +232,18 @@ try:
             st.write("No strong association rules found with current thresholds.")
 except Exception as e:
     st.error(f"Association Analysis error: {e}")
+# --- ADD THIS TO STAGE 6 (ASSOCIATION RULES) ---
+if rules_df is not None and not rules_df.empty:
+    st.subheader("Top Rules by Lift (Strength of Association)")
+    top_rules = rules_df.sort_values('lift', ascending=False).head(5)
+    
+    # Create a label combining Antecedents -> Consequents
+    top_rules['rule_label'] = top_rules['antecedents'] + " -> " + top_rules['consequents']
+    
+    fig_rules, ax_rules = plt.subplots(figsize=(10, 4))
+    sns.barplot(data=top_rules, x='lift', y='rule_label', palette="viridis", ax=ax_rules)
+    ax_rules.set_title("Top 5 Strongest Associations")
+    st.pyplot(fig_rules)
 
 # ===============================
 # 8. STAGE 8: GEOSPATIAL & SUMMARY
@@ -221,37 +251,38 @@ except Exception as e:
 st.divider()
 st.header("📍 Stage 8: Geographic & Insights")
 
-if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
-    # Drop rows with NaN in coordinates for PyDeck
-    map_data = df_raw.dropna(subset=['Latitude', 'Longitude'])
+# --- REPLACE YOUR STAGE 8 MAP WITH THIS ---
+if 'Latitude' in df_filtered.columns and 'Cluster' in df_filtered.columns:
+    st.subheader("Geographic Cluster Distribution")
+    
+    # Create a color lookup for clusters
+    cluster_colors = {
+        0: [255, 0, 0, 150],   # Red
+        1: [0, 255, 0, 150],   # Green
+        2: [0, 0, 255, 150],   # Blue
+        3: [255, 165, 0, 150], # Orange
+        4: [128, 0, 128, 150]  # Purple
+    }
+    
+    df_filtered['color'] = df_filtered['Cluster'].map(cluster_colors).fillna([[255, 255, 255, 150]])
+
     st.pydeck_chart(pdk.Deck(
+        map_style='mapbox://styles/mapbox/light-v9',
         initial_view_state=pdk.ViewState(
-            latitude=map_data['Latitude'].mean(), 
-            longitude=map_data['Longitude'].mean(), 
-            zoom=4
+            latitude=df_filtered['Latitude'].mean(),
+            longitude=df_filtered['Longitude'].mean(),
+            zoom=3,
+            pitch=50,
         ),
         layers=[
             pdk.Layer(
-                'ScatterplotLayer', 
-                data=map_data, 
-                get_position='[Longitude, Latitude]', 
-                get_color='[255, 100, 0, 160]', 
-                radius_min_pixels=5
+                'ScatterplotLayer',
+                data=df_filtered,
+                get_position='[Longitude, Latitude]',
+                get_color='color',
+                get_radius=20000, # Radius in meters
+                pickable=True
             ),
         ],
+        tooltip={"text": "Cluster: {Cluster}\nOperator: {Station Operator}"}
     ))
-else:
-    st.info("Geographic data (Latitude/Longitude) not found in dataset.")
-
-st.subheader("Key Findings")
-rule_text = "No strong patterns found"
-if rules_df is not None and not rules_df.empty:
-    rule_text = f"Significant link between '{rules_df.iloc[0]['antecedents']}' and '{rules_df.iloc[0]['consequents']}'"
-
-st.info(f"""
-- **Anomalies:** Identified {len(usage_outliers)} stations with irregular usage and {len(cost_outliers)} with irregular pricing.
-- **Rules Analysis:** {rule_text}.
-""")
-
-if st.checkbox("View Final Data Table"):
-    st.dataframe(df_raw)
