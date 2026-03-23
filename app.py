@@ -249,50 +249,42 @@ if rules_df is not None and not rules_df.empty:
 # 8. STAGE 8: GEOSPATIAL & SUMMARY
 # ===============================
 st.divider()
-st.header("📍 Stage 8: Geographic Cluster Distribution")
+st.header("📍 Stage 8: Geographic & Insights")
 
-# Use df_filtered to ensure we have the 'Cluster' column from Stage 4
-if 'Latitude' in df_filtered.columns and 'Cluster' in df_filtered.columns:
-    
-    # Define a high-contrast color palette for clusters
-    cluster_colors = {
-        0: [255, 50, 50, 200],    # Bright Red
-        1: [50, 255, 50, 200],    # Bright Green
-        2: [50, 150, 255, 200],   # Bright Blue
-        3: [255, 200, 50, 200],   # Gold
-        4: [200, 50, 255, 200]    # Purple
-    }
-
-    # Prepare data and apply colors based on Cluster ID
-    map_df = df_filtered.dropna(subset=['Latitude', 'Longitude']).copy()
-    map_df['color'] = map_df['Cluster'].apply(lambda x: cluster_colors.get(x, [200, 200, 200, 150]))
-
-    # Enhanced interactive map
+if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
+    # Drop rows with NaN in coordinates for PyDeck
+    map_data = df_raw.dropna(subset=['Latitude', 'Longitude'])
     st.pydeck_chart(pdk.Deck(
-    # 'light' or 'road' styles often have better default visibility 
-    map_style='mapbox://styles/mapbox/light-v9', 
-    initial_view_state=pdk.ViewState(
-        latitude=map_df['Latitude'].mean(),
-        longitude=map_df['Longitude'].mean(),
-        zoom=3,
-        pitch=45
-    ),
-    layers=[
-        pdk.Layer(
-            'ScatterplotLayer',
-            data=map_df,
-            get_position='[Longitude, Latitude]',
-            get_color='color',
-            get_radius=20000, # Smaller radius looks more like real station points
-            radius_min_pixels=5,
-            pickable=True,
-            stroked=True,
-            line_width_min_pixels=1,
-            get_line_color=[255, 255, 255]
+        initial_view_state=pdk.ViewState(
+            latitude=map_data['Latitude'].mean(), 
+            longitude=map_data['Longitude'].mean(), 
+            zoom=4
         ),
-    ],
-    tooltip={"text": "Operator: {Station Operator}\nCluster: {Cluster}"}
-))
+        layers=[
+            pdk.Layer(
+                'ScatterplotLayer', 
+                data=map_data, 
+                get_position='[Longitude, Latitude]', 
+                get_color='[255, 100, 0, 160]', 
+                radius_min_pixels=5
+            ),
+        ],
+    ))
+else:
+    st.info("Geographic data (Latitude/Longitude) not found in dataset.")
+
+st.subheader("Key Findings")
+rule_text = "No strong patterns found"
+if rules_df is not None and not rules_df.empty:
+    rule_text = f"Significant link between '{rules_df.iloc[0]['antecedents']}' and '{rules_df.iloc[0]['consequents']}'"
+
+st.info(f"""
+- **Anomalies:** Identified {len(usage_outliers)} stations with irregular usage and {len(cost_outliers)} with irregular pricing.
+- **Rules Analysis:** {rule_text}.
+""")
+
+if st.checkbox("View Final Data Table"):
+    st.dataframe(df_raw)
 
 st.subheader("Key Findings & Strategic Insights")
 # Dynamic insights based on analysis results
