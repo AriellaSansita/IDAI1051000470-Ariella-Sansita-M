@@ -1,6 +1,5 @@
 import streamlit as st
-import pandas as pd
-import matplotlib.pyplot as pd
+import pandas as pd  # Fixed this alias
 import matplotlib.pyplot as plt
 import seaborn as sns
 import pydeck as pdk
@@ -22,19 +21,24 @@ st.markdown("---")
 @st.cache_data
 def load_and_deep_clean(file_path):
     try:
-        # Source dataset must include columns defined in Task 2 Stage 1 
-        df = pd.read_csv(file_path)
-        df = df.drop_duplicates()
+        # Load dataset containing columns like Station ID, Charger Type, and Usage Stats 
+        df = pd.read_csv(file_path) 
+        df = df.drop_duplicates() [cite: 2]
+        
+        # Handle missing values as required by Stage 2 
         numeric_cols = df.select_dtypes(include=[np.number]).columns
-        df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median())
+        df[numeric_cols] = df[numeric_cols].fillna(df[numeric_cols].median()) [cite: 2]
+        
         categorical_cols = df.select_dtypes(include=['object']).columns
         for col in categorical_cols:
-            df[col] = df[col].fillna(df[col].mode()[0])
+            df[col] = df[col].fillna(df[col].mode()[0]) [cite: 2]
+            
         return df
     except Exception as e:
         st.error(f"❌ Error loading data: {e}")
         return None
 
+# Ensure 'cleaned_ev_charging_data.csv' is in your repository 
 df_raw = load_and_deep_clean("cleaned_ev_charging_data.csv")
 if df_raw is None: 
     st.stop()
@@ -45,12 +49,15 @@ if df_raw is None:
 @st.cache_data
 def preprocess_for_ml(df):
     df_proc = df.copy()
+    
+    # Encode categorical features like Charger Type and Renewable Energy Source 
     cat_to_encode = ['Charger Type', 'Station Operator', 'Renewable Energy Source', 'Availability']
     for col in cat_to_encode:
         if col in df_proc.columns:
             le = LabelEncoder()
             df_proc[f'{col}_Enc'] = le.fit_transform(df_proc[col].astype(str))
 
+    # Normalize continuous variables for clustering 
     cluster_features = ['Cost (USD/kWh)', 'Usage Stats (avg users/day)', 'Charging Capacity (kW)', 'Distance to City (km)', 'Availability_Enc']
     scaler = MinMaxScaler()
     existing = [f for f in cluster_features if f in df_proc.columns]
@@ -63,7 +70,6 @@ df_processed, cluster_cols = preprocess_for_ml(df_raw)
 # 4. STAGE 3: EXPLORATORY DATA ANALYSIS (EDA)
 # ===============================
 st.header("📊 Stage 3: Exploratory Data Analysis")
-
 tab1, tab2, tab3 = st.tabs(["Demand & Cost", "Growth Trends", "Correlations"])
 
 with tab1:
@@ -81,6 +87,7 @@ with tab1:
         st.pyplot(fig_b)
 
 with tab2:
+    # Analyzing usage statistics vs installation year to check growth 
     st.subheader("Growth Over Time (Usage vs Installation Year)")
     if 'Installation Year' in df_raw.columns:
         yearly_usage = df_raw.groupby('Installation Year')['Usage Stats (avg users/day)'].mean().reset_index()
@@ -100,6 +107,7 @@ with tab3:
 st.divider()
 st.header("🤖 Stage 4: Machine Learning - Station Clustering")
 
+# Applying K-Means to group charging behaviors 
 k_value = st.slider("Select k (Number of Clusters)", 2, 6, 3)
 model = KMeans(n_clusters=k_value, init='k-means++', random_state=42, n_init=10)
 df_raw['Cluster'] = model.fit_predict(df_processed[cluster_cols])
@@ -126,7 +134,7 @@ with col_pers:
 st.divider()
 st.header("🔗 Stage 5: Association Rule Mining")
 try:
-    # Binary encoding for Association Rules 
+    # Find connections between station features and user demand 
     df_rules = pd.DataFrame()
     df_rules['HighUsage'] = df_raw['Usage Stats (avg users/day)'] > df_raw['Usage Stats (avg users/day)'].median()
     df_rules['FastCharger'] = df_raw['Charging Capacity (kW)'] > 50
@@ -139,14 +147,13 @@ try:
         rules['antecedents'] = rules['antecedents'].apply(lambda x: ', '.join(list(x)))
         rules['consequents'] = rules['consequents'].apply(lambda x: ', '.join(list(x)))
         
-        # Visualization of Rules
         fig_rules, ax_rules = plt.subplots(figsize=(10, 4))
         sns.barplot(data=rules.head(10), x='lift', y='antecedents', hue='consequents', ax=ax_rules)
         st.subheader("Top Rules by Lift")
         st.pyplot(fig_rules)
         st.dataframe(rules[['antecedents', 'consequents', 'support', 'confidence', 'lift']])
     else:
-        st.warning("No strong associations found with current thresholds.")
+        st.warning("No strong associations found.")
 except Exception as e:
     st.error(f"Rule Mining Error: {e}")
 
@@ -155,6 +162,8 @@ except Exception as e:
 # ===============================
 st.divider()
 st.header("🔍 Stage 6: Anomaly Detection")
+
+# Use statistical methods (IQR) to find abnormal usage or maintenance patterns 
 def get_outliers(df, col):
     Q1, Q3 = df[col].quantile(0.25), df[col].quantile(0.75)
     IQR = Q3 - Q1
@@ -167,25 +176,15 @@ c1, c2 = st.columns(2)
 c1.metric("Usage Anomalies", len(anomalies))
 c2.metric("Maintenance Outliers", len(maintenance_anomalies))
 
-if not anomalies.empty:
-    st.write("### Detailed Anomaly Data")
-    st.dataframe(anomalies[['Station Operator', 'Usage Stats (avg users/day)', 'Cost (USD/kWh)']].head(10))
-
 # ===============================
-# 8. STAGE 8: DEPLOYMENT & GEOGRAPHIC INSIGHTS
+# 8. STAGE 8: GEOSPATIAL & INSIGHTS
 # ===============================
 st.divider()
 st.header("📍 Stage 8: Geographic Distribution")
 if 'Latitude' in df_raw.columns and 'Longitude' in df_raw.columns:
     st.pydeck_chart(pdk.Deck(
-        map_style='mapbox://styles/mapbox/light-v9',
-        initial_view_state=pdk.ViewState(latitude=df_raw['Latitude'].mean(), longitude=df_raw['Longitude'].mean(), zoom=3, pitch=50),
-        layers=[pdk.Layer('HexagonLayer', data=df_raw, get_position='[Longitude, Latitude]', radius=200, elevation_scale=4, elevation_range=[0, 1000], pickable=True, extinguished=True)]
+        initial_view_state=pdk.ViewState(latitude=df_raw['Latitude'].mean(), longitude=df_raw['Longitude'].mean(), zoom=3),
+        layers=[pdk.Layer('HexagonLayer', data=df_raw, get_position='[Longitude, Latitude]', radius=200, elevation_scale=4, pickable=True)]
     ))
 
-st.subheader("Strategic Recommendations")
-st.info("""
-- **Expansion:** Prioritize renewable-integrated stations in high-usage clusters.
-- **Maintenance:** Investigate the flagged outliers for potential hardware failure.
-- **Pricing:** Dynamic pricing models should target 'Emerging Stations' to boost utilization.
-""")
+st.info("Insights: Which charger types are most popular? Where are peak demand stations? ")
