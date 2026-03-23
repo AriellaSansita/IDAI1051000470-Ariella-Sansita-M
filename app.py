@@ -177,5 +177,3 @@ st.info(f"""
 
 if st.checkbox("View Final Data Table"):
     st.dataframe(df_raw)
-
-how many marks will i get for this?
