@@ -198,33 +198,73 @@ with t4:
         st.error(f"Error: {e}")
 
 # ── Tab 5: Anomaly Detection ──────────────────────────────────────────────────
+# ── Tab 5: Anomaly Detection ──────────────────────────────────────────────────
 with t5:
     st.header("Anomaly Detection (IQR Method)")
+    
+    # Logic: Define IQR function for numerical outliers
     def iqr(d, c):
-        Q1, Q3 = d[c].quantile(0.25), d[c].quantile(0.75); IQR = Q3-Q1
-        return d[(d[c] < Q1-1.5*IQR) | (d[c] > Q3+1.5*IQR)]
-    uout, cout = iqr(df,"Usage Stats (avg users/day)"), iqr(df,"Cost (USD/kWh)")
-    hclu = hclr = mout = pd.DataFrame()
+        Q1, Q3 = d[c].quantile(0.25), d[c].quantile(0.75)
+        IQR = Q3 - Q1
+        return d[(d[c] < Q1 - 1.5 * IQR) | (d[c] > Q3 + 1.5 * IQR)]
+
+    # 1. Identify Outliers
+    uout = iqr(df, "Usage Stats (avg users/day)")
+    cout = iqr(df, "Cost (USD/kWh)")
+    
+    # 2. Identify Multi-variable Business Anomalies
+    hclu = hclr = pout = pd.DataFrame()
     if "Reviews (Rating)" in df.columns:
-        ch, ul, rl = df["Cost (USD/kWh)"].quantile(.75), df["Usage Stats (avg users/day)"].quantile(.25), df["Reviews (Rating)"].quantile(.25)
-        hclu = df[(df["Cost (USD/kWh)"]>ch) & (df["Usage Stats (avg users/day)"]<ul)]
-        hclr = df[(df["Cost (USD/kWh)"]>ch) & (df["Reviews (Rating)"]<rl)]
-    for mc in ["Maintenance Records","Number of Maintenance Visits"]:
-        if mc in df.columns: mout = iqr(df, mc); break
+        # Define threshold as the "Expensive" (75th percentile) and "Poor" (25th percentile)
+        ch = df["Cost (USD/kWh)"].quantile(0.75)
+        ul = df["Usage Stats (avg users/day)"].quantile(0.25)
+        rl = df["Reviews (Rating)"].quantile(0.25)
+        
+        # High Cost but Low Usage
+        hclu = df[(df["Cost (USD/kWh)"] > ch) & (df["Usage Stats (avg users/day)"] < ul)]
+        # High Cost but Low Reviews
+        hclr = df[(df["Cost (USD/kWh)"] > ch) & (df["Reviews (Rating)"] < rl)]
 
-    m1,m2,m3,m4,m5 = st.columns(5)
-    m1.metric("Usage Outliers", len(uout)); m2.metric("Cost Outliers", len(cout))
-    m3.metric("High Cost+Low Usage", len(hclu)); m4.metric("High Cost+Low Reviews", len(hclr))
-    m5.metric("Maintenance Anomalies", len(mout))
+    # 3. Check for Parking Capacity Outliers (Replacing the missing Maintenance column)
+    if "Parking Spots" in df.columns:
+        pout = iqr(df, "Parking Spots")
 
-    fig, ax = plt.subplots(figsize=(10,5))
+    # Display Metrics
+    m1, m2, m3, m4, m5 = st.columns(5)
+    m1.metric("Usage Outliers", len(uout))
+    m2.metric("Cost Outliers", len(cout))
+    m3.metric("High Cost + Low Usage", len(hclu))
+    m4.metric("High Cost + Low Reviews", len(hclr))
+    m5.metric("Parking Anomalies", len(pout))
+
+    # Visualization: Anomaly Scatter Plot
+    fig, ax = plt.subplots(figsize=(10, 5))
+    
+    # Filter for points that are NOT anomalies for the background
     norm = ~df.index.isin(uout.index) & ~df.index.isin(cout.index)
-    ax.scatter(df.loc[norm,"Cost (USD/kWh)"], df.loc[norm,"Usage Stats (avg users/day)"], c="steelblue", alpha=0.5, s=30, label="Normal")
-    for data, col, mk, lbl in [(uout,"orange","^","Usage Outlier"),(cout,"red","X","Cost Outlier"),(hclu,"purple","D","High Cost+Low Usage")]:
-        if len(data): ax.scatter(data["Cost (USD/kWh)"], data["Usage Stats (avg users/day)"], c=col, s=100, marker=mk, label=lbl, zorder=5)
-    ax.set_xlabel("Cost (USD/kWh)"); ax.set_ylabel("Avg Users/Day"); ax.legend(); ax.set_title("Anomaly Scatter")
+    
+    # Plot normal points
+    ax.scatter(df.loc[norm, "Cost (USD/kWh)"], df.loc[norm, "Usage Stats (avg users/day)"], 
+               c="steelblue", alpha=0.3, s=30, label="Normal")
+    
+    # Highlight specific anomaly groups
+    anomalies = [
+        (uout, "orange", "^", "Usage Outlier"),
+        (cout, "red", "X", "Cost Outlier"),
+        (hclu, "purple", "D", "High Cost + Low Usage")
+    ]
+    
+    for data, col, mk, lbl in anomalies:
+        if not data.empty:
+            ax.scatter(data["Cost (USD/kWh)"], data["Usage Stats (avg users/day)"], 
+                       c=col, s=100, marker=mk, label=lbl, zorder=5)
+            
+    ax.set_xlabel("Cost (USD/kWh)")
+    ax.set_ylabel("Avg Users/Day")
+    ax.legend(loc="upper right", fontsize="small")
+    ax.set_title("Detection of High-Priority Station Anomalies")
     st.pyplot(fig, use_container_width=True)
-
+    
 # ── Tab 6: Insights ───────────────────────────────────────────────────────────
 with t6:
     st.header("Insights & Reporting")
