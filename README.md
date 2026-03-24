@@ -15,6 +15,7 @@
 # EV SmartCharging Analytics
 ---
 
+
 ## 📋 Project Scope
 
 **Scenario:** SmartCharging Analytics — Uncovering EV Behavior Patterns
@@ -142,6 +143,16 @@ Three map modes available in the app:
 | Cluster Map | Stations colour-coded by K-Means cluster assignment |
 
 ---
+## Screenshot
+
+<img width="1402" height="712" alt="Screenshot 2026-03-24 at 6 04 34 PM" src="https://github.com/user-attachments/assets/28af923a-1319-4f3f-bb5e-0f0fbe1d2f97" />
+<img width="1351" height="660" alt="Screenshot 2026-03-24 at 6 06 04 PM" src="https://github.com/user-attachments/assets/96d352f8-6ee8-4323-ad7e-fabc2307655f" />
+<img width="1334" height="431" alt="Screenshot 2026-03-24 at 6 06 34 PM" src="https://github.com/user-attachments/assets/52b6e572-60cd-4f50-a9b4-55cbd0fc69b1" />
+<img width="1366" height="579" alt="Screenshot 2026-03-24 at 6 06 45 PM" src="https://github.com/user-attachments/assets/374189cf-e612-4e94-839c-ceed6d46d428" />
+<img width="1337" height="730" alt="Screenshot 2026-03-24 at 6 07 13 PM" src="https://github.com/user-attachments/assets/f53e6bf0-ebcb-4641-b830-bd1e05ea1dc5" />
+<img width="1378" height="583" alt="Screenshot 2026-03-24 at 6 07 24 PM" src="https://github.com/user-attachments/assets/a1dbb5d6-1534-4523-be4b-cba52ab79ee0" />
+
+
 
 ## 💡 Key Findings & Insights
 
