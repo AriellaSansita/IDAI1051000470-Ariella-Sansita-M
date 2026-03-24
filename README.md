@@ -1,7 +1,5 @@
 # IDAI1051000470-Ariella-Sansita-M
 
-# MedTimer Daily Medicine Companion
-
 # Candidate Name - Ariella Sansita M
 
 # Candidate Registration Number - 1000470
