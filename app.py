@@ -9,8 +9,8 @@ from sklearn.preprocessing import MinMaxScaler, LabelEncoder
 from sklearn.cluster import KMeans
 from mlxtend.frequent_patterns import apriori, association_rules as arm_rules
 
-st.set_page_config(page_title="EV SmartCharging Analytics", page_icon="⚡", layout="wide")
-st.title("🚗 SmartCharging Analytics: EV Behavior Patterns")
+st.set_page_config(page_title="EV Smart Charging Analytics", page_icon="⚡", layout="wide")
+st.title("🚗 Smart Charging Analytics: EV Behavior Patterns")
 
 # ── Data ────────────────────────────────────────────────────────────────────
 @st.cache_data
