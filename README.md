@@ -1,10 +1,20 @@
-# SmartCharging-Analytics
+# IDAI1051000470-Ariella-Sansita-M
 
-# ⚡ EV SmartCharging Analytics
-### IDAI105 — Data Mining | Year 1 Summative Assessment
+# MedTimer Daily Medicine Companion
 
-> Uncovering EV charging behaviour patterns through clustering, association rule mining, anomaly detection, and geospatial visualisation — deployed as an interactive Streamlit dashboard.
+# Candidate Name - Ariella Sansita M
 
+# Candidate Registration Number - 1000470
+
+# CRS Name: Artificial Intelligence
+
+# Course Name - Data Mining
+
+# School name - Birla Open Minds International School, Kollur
+
+# Summative Assessment
+
+# EV SmartCharging Analytics
 ---
 
 ## 📋 Project Scope
@@ -164,27 +174,6 @@ The app is structured into 7 tabs:
 | 💡 Insights | Correlation heatmap, operator bubbles, urban vs rural, key takeaways |
 | 🗺️ Map | Three switchable map layers |
 
-**To run locally:**
-```bash
-git clone https://github.com/YourUsername/YourRepoName
-cd YourRepoName
-pip install -r requirements.txt
-streamlit run app.py
-```
-
----
-
-## 📁 Repository Structure
-
-```
-YourRepoName/
-│
-├── app.py                        # Main Streamlit application
-├── cleaned_ev_charging_data.csv  # Dataset used for analysis
-├── requirements.txt              # Python dependencies
-└── README.md                     # This file
-```
-
 ---
 
 ## 📦 Dependencies
@@ -207,6 +196,8 @@ See `requirements.txt`. Key libraries:
 
 ## 📚 References
 
-- [Association Rule Mining — dicecamp.com](https://dicecamp.com/insights/association-mining-rules-combined-with-clustering/)
-- [Anomaly Detection Techniques — KDnuggets](https://www.kdnuggets.com/2023/05/beginner-guide-anomaly-detection-techniques-data-science.html)
-- [Scikit-learn Documentation](https://scikit-learn.org/stable/)
+- https://dicecamp.com/insights/association-mining-rules-combined-with-clustering/
+- https://www.kdnuggets.com/2023/05/beginner-guide-anomaly-detection-techniques-data-science.html
+- https://scikit-learn.org/stable/
+- https://likuyani.cdf.go.ke/uploaded-files/5P8049/HomePages/PythonForGeospatialDataAnalysis.pdf
+- https://365datascience.com/tutorials/python-tutorials/k-means-clustering/
