@@ -53,7 +53,7 @@ with t1:
 **Objectives**
 1. Identify usage patterns by charger type, operator & location
 2. Segment stations via K-Means clustering
-3. Mine association rules (Apriori) for hidden co-occurrences
+3. Mine association rules  for hidden co-occurrences
 4. Flag anomalous stations (high cost, low usage/reviews)
 5. Visualise geographic demand with an interactive heatmap
 """)
@@ -143,7 +143,7 @@ with t3:
 
 # ── Tab 4: Association Rules ──────────────────────────────────────────────────
 with t4:
-    st.header("Association Rule Mining (Apriori)")
+    st.header("Association Rule Mining")
     rules_df = pd.DataFrame()
     try:
         ar = pd.DataFrame({
@@ -197,7 +197,6 @@ with t4:
     except Exception as e:
         st.error(f"Error: {e}")
 
-# ── Tab 5: Anomaly Detection ──────────────────────────────────────────────────
 # ── Tab 5: Anomaly Detection ──────────────────────────────────────────────────
 with t5:
     st.header("Anomaly Detection (IQR Method)")
