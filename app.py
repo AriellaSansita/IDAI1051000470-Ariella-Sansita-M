@@ -225,14 +225,6 @@ with t5:
     ax.set_xlabel("Cost (USD/kWh)"); ax.set_ylabel("Avg Users/Day"); ax.legend(); ax.set_title("Anomaly Scatter")
     st.pyplot(fig, use_container_width=True)
 
-    if st.checkbox("Show Anomaly Tables"):
-        a1,a2,a3,a4,a5 = st.tabs(["Usage","Cost","High Cost+Low Usage","High Cost+Low Reviews","Maintenance"])
-        with a1: st.dataframe(uout, use_container_width=True)
-        with a2: st.dataframe(cout, use_container_width=True)
-        with a3: st.dataframe(hclu, use_container_width=True)
-        with a4: st.dataframe(hclr, use_container_width=True)
-        with a5: st.dataframe(mout, use_container_width=True) if len(mout) else st.info("No maintenance column found.")
-
 # ── Tab 6: Insights ───────────────────────────────────────────────────────────
 with t6:
     st.header("Insights & Reporting")
