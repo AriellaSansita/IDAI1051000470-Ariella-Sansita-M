@@ -10,13 +10,13 @@
 
 # Summative Assessment
 
-# EV SmartCharging Analytics
+# EV Smart Charging Analytics
 ---
 
 
 ## 📋 Project Scope
 
-**Scenario:** SmartCharging Analytics — Uncovering EV Behavior Patterns
+**Scenario:** Smart Charging Analytics — Uncovering EV Behavior Patterns
 
 As part of the SmartEnergy Data Lab team, this project analyses a global dataset of EV charging stations to improve station utilisation and customer experience. The analysis explores charging behaviour across station types, operators, locations, and usage levels to support smarter infrastructure planning.
 
