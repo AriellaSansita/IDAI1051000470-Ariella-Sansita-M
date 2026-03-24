@@ -2,7 +2,8 @@ streamlit
 pandas
 matplotlib
 seaborn
-scikit-learn
 pydeck
-altair
+numpy
+scikit-learn
 mlxtend
+networkx
