@@ -4,7 +4,7 @@
 
 # CRS Name: Artificial Intelligence
 
-# Course Name - Design Thinking for Innovation
+# Course Name - Data Mining
 
 # School name - Birla Open Minds International School, Kollur
 
